@@ -95,7 +95,13 @@ function create(withRipple: boolean, options: RippleOptions): Attachment<HTMLEle
 			if (!withRipple) return;
 
 			// Measure the overlay itself (it fills the host's padding box, like md-ripple's surface).
-			const { width, height, left, top } = layer.getBoundingClientRect();
+			// Work in the layer's local (untransformed) pixels so the ripple stays under the pointer
+			// inside scaled ancestors such as the mobile phone frame.
+			const rect = layer.getBoundingClientRect();
+			const width = layer.offsetWidth || rect.width;
+			const height = layer.offsetHeight || rect.height;
+			const scaleX = rect.width ? width / rect.width : 1;
+			const scaleY = rect.height ? height / rect.height : 1;
 			const maxDim = Math.max(width, height);
 			const softEdge = Math.max(RIPPLE_TIMING.softEdgeContainerRatio * maxDim, RIPPLE_TIMING.softEdgeMinimumSize);
 			const initialSize = Math.max(1, Math.floor(maxDim * RIPPLE_TIMING.initialOriginScale));
@@ -105,8 +111,8 @@ function create(withRipple: boolean, options: RippleOptions): Attachment<HTMLEle
 			let sx = width / 2;
 			let sy = height / 2;
 			if (event && !options.centered) {
-				sx = event.clientX - left;
-				sy = event.clientY - top;
+				sx = (event.clientX - rect.left) * scaleX;
+				sy = (event.clientY - rect.top) * scaleY;
 			}
 			const start = `${sx - initialSize / 2}px, ${sy - initialSize / 2}px`;
 			const end = `${(width - initialSize) / 2}px, ${(height - initialSize) / 2}px`;
