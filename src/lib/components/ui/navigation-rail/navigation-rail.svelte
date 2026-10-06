@@ -4,6 +4,7 @@
 	import { fade } from 'svelte/transition';
 	import { activeSpring, springCss } from '#lib/m3/motion.js';
 	import { cn, type WithElementRef } from '#lib/utils.js';
+	import { moveFocusBetweenItems } from '#lib/components/ui/navigation-bar/keyboard.js';
 	import {
 		RAIL_COLLAPSED_WIDTH,
 		RAIL_EXPANDED_MAX,
@@ -20,6 +21,11 @@
 	 * Modal: a 96dp placeholder stays in the layout; when expanded the rail floats over the content
 	 * (surface-container, level2, 16dp end corners) with a 32% scrim, width on fastSpatial. The scrim is
 	 * `position: fixed`; give an ancestor `contain: layout` (or a transform) to confine it to a frame.
+	 * Opening the modal rail moves focus into it (the selected item) unless it is already inside, Tab is
+	 * trapped while open, and closing returns focus to where it came from.
+	 * Keyboard: Up / Down / Home / End move focus between the items (all items stay in the tab order).
+	 * Transitions are suppressed for the first two frames so a rail whose `expanded` default is resolved
+	 * on hydration (e.g. from a media query) appears in place instead of animating open on page load.
 	 */
 	let {
 		ref = $bindable(null),
@@ -66,6 +72,35 @@
 
 	let floating = $derived(modal && expanded);
 
+	// Skip transitions until the first frames after hydration have painted.
+	let settled = $state(false);
+	$effect(() => {
+		let id = requestAnimationFrame(() => {
+			id = requestAnimationFrame(() => (settled = true));
+		});
+		return () => cancelAnimationFrame(id);
+	});
+
+	// Modal rail focus management: move focus in on open (if it is outside), restore it on close.
+	$effect(() => {
+		if (!floating || !navEl) return;
+		const nav = navEl;
+		const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		const returnTo = previous && !nav.contains(previous) ? previous : null;
+		if (returnTo) {
+			(
+				nav.querySelector<HTMLElement>('.rail-item[aria-current="page"]') ??
+				nav.querySelector<HTMLElement>('a[href], button:not([disabled])')
+			)?.focus();
+		}
+		return () => {
+			const active = document.activeElement;
+			if (returnTo?.isConnected && (!active || active === document.body || nav.contains(active))) {
+				returnTo.focus();
+			}
+		};
+	});
+
 	setNavigationRailContext({
 		get expanded() {
 			return expanded;
@@ -80,6 +115,11 @@
 			if (modal) expanded = false;
 		}
 	});
+
+	function onNavKeydown(e: KeyboardEvent) {
+		moveFocusBetweenItems(e, navEl, '.rail-item', 'vertical');
+		trapFocus(e);
+	}
 
 	function trapFocus(e: KeyboardEvent) {
 		if (!floating || e.key !== 'Tab' || !navEl) return;
@@ -113,7 +153,8 @@
 	data-slot="navigation-rail"
 	data-expanded={expanded ? '' : undefined}
 	data-modal={modal ? '' : undefined}
-	class={cn('relative h-full shrink-0', className)}
+	data-settling={settled ? undefined : ''}
+	class={cn('rail-root relative h-full shrink-0', className)}
 	style:width="{modal ? RAIL_COLLAPSED_WIDTH : targetWidth}px"
 	style:transition={modal ? undefined : `width ${springCss('default-spatial').transition}`}
 	{...restProps}
@@ -143,7 +184,7 @@
 		style:transition={modal
 			? `width ${springCss('fast-spatial').transition}, background-color ${springCss('default-effects').transition}, box-shadow ${springCss('default-effects').transition}, border-radius ${springCss('default-effects').transition}`
 			: undefined}
-		onkeydown={trapFocus}
+		onkeydown={onNavKeydown}
 	>
 		{#if header}
 			<div data-slot="navigation-rail-header" class="mb-10 flex shrink-0 flex-col items-start gap-1">
@@ -166,3 +207,10 @@
 		</div>
 	</nav>
 </div>
+
+<style>
+	.rail-root[data-settling],
+	.rail-root[data-settling] :global(*) {
+		transition: none !important;
+	}
+</style>

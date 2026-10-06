@@ -66,6 +66,8 @@
 
 	// App bars
 	let smallScrolled = $state(false);
+	let starred = $state(true);
+	let filtersOn = $state(false);
 	let searchValue = $state('');
 
 	// Toolbars
@@ -143,7 +145,7 @@
 	<!-- ============================================================ NAVIGATION BAR -->
 	<Section
 		title="Navigation bar"
-		description="The M3 Expressive flexible bar is 64dp: vertical items on compact windows, horizontal items on medium windows. The 80dp tall bar is the baseline configuration. The active indicator grows from its center and the icon fills when selected."
+		description="The M3 Expressive flexible bar is 64dp: vertical items on compact windows, horizontal items on medium windows. The 80dp tall bar is the baseline configuration. The active indicator grows from its center and the icon fills when selected. Arrow keys (and Home / End) move focus between destinations."
 	>
 		<div class="grid gap-6 lg:grid-cols-2">
 			<Demo
@@ -189,19 +191,22 @@
 			label="Short · horizontal items (medium window)"
 			spec="64dp · indicator 40dp tall, hugs content, 16dp padding · icon → label 4dp · items take 60/70/80/90% for 3/4/5/6 items · active label on-secondary-container"
 		>
-			<div class={[frame, 'h-[260px] w-full']}>
-				{@render pageBody(tabletItems.find((i) => i.id === shortHorizontal)?.label ?? '')}
-				<NavigationBar.Root variant="short" layout="horizontal">
-					{#each tabletItems as item (item.id)}
-						<NavigationBar.Item
-							icon={item.icon}
-							label={item.label}
-							badge={item.badge}
-							selected={shortHorizontal === item.id}
-							onclick={() => (shortHorizontal = item.id)}
-						/>
-					{/each}
-				</NavigationBar.Root>
+			<!-- a medium window is ≥ 600dp wide: on phones the frame keeps that width and scrolls sideways -->
+			<div class="w-full overflow-x-auto rounded-m3-xl">
+				<div class={[frame, 'h-[260px] w-full min-w-[600px]']}>
+					{@render pageBody(tabletItems.find((i) => i.id === shortHorizontal)?.label ?? '')}
+					<NavigationBar.Root variant="short" layout="horizontal">
+						{#each tabletItems as item (item.id)}
+							<NavigationBar.Item
+								icon={item.icon}
+								label={item.label}
+								badge={item.badge}
+								selected={shortHorizontal === item.id}
+								onclick={() => (shortHorizontal = item.id)}
+							/>
+						{/each}
+					</NavigationBar.Root>
+				</div>
 			</div>
 		</Demo>
 	</Section>
@@ -209,7 +214,7 @@
 	<!-- ============================================================ NAVIGATION RAIL -->
 	<Section
 		title="Navigation rail"
-		description="Collapsed (96dp) and expanded (220–360dp, hugs the widest item) on the defaultSpatial spring. The modal rail floats over the content with a scrim and closes on Escape, scrim click or selection."
+		description="Collapsed (96dp) and expanded (220–360dp, hugs the widest item) on the defaultSpatial spring. The modal rail floats over the content with a scrim, traps focus and closes on Escape, scrim click or selection. Up / Down move focus between items."
 	>
 		<Demo
 			label="Standard · collapsed ⇄ expanded"
@@ -376,7 +381,7 @@
 		<div class="grid gap-6 lg:grid-cols-2">
 			<Demo
 				label="Small"
-				spec="64dp · title-large · 4dp side padding · leading on-surface · trailing on-surface-variant · scrolled surface-container (defaultEffects)"
+				spec="64dp · title-large · 4dp side padding · leading on-surface · trailing on-surface-variant · 48dp action targets · toggle action: selected primary, round → square · scrolled surface-container (defaultEffects)"
 			>
 				<div class={[frame, 'h-[360px] w-[412px] max-w-full']}>
 					<div class="min-h-0 flex-1 overflow-y-auto">
@@ -384,7 +389,7 @@
 							{#snippet leading()}<AppBarAction icon="arrow_back" label="Back" />{/snippet}
 							{#snippet trailing()}
 								<AppBarAction icon="attach_file" label="Attach" />
-								<AppBarAction icon="today" label="Calendar" />
+								<AppBarAction icon="star" label="Star" selected={starred} onclick={() => (starred = !starred)} />
 								<AppBarAction icon="more_vert" label="More" />
 							{/snippet}
 						</TopAppBar>
@@ -422,7 +427,7 @@
 			</Demo>
 			<Demo
 				label="Large flexible"
-				spec="120dp (152 with subtitle) → 64dp · display-small · title-medium subtitle · title baseline 28dp"
+				spec="120dp (152 with subtitle) → 64dp · display-small · title-medium subtitle · title baseline 28dp · tonal toggle action (selected secondary)"
 			>
 				<div class={[frame, 'h-[420px] w-[412px] max-w-full']}>
 					<div class="min-h-0 flex-1 overflow-y-auto">
@@ -430,7 +435,13 @@
 							{#snippet leading()}<AppBarAction icon="menu" label="Menu" />{/snippet}
 							{#snippet trailing()}
 								<AppBarAction icon="search" label="Search" />
-								<AppBarAction icon="tune" label="Filters" variant="tonal" />
+								<AppBarAction
+									icon="tune"
+									label="Filters"
+									variant="tonal"
+									selected={filtersOn}
+									onclick={() => (filtersOn = !filtersOn)}
+								/>
 							{/snippet}
 						</TopAppBar>
 						{@render filler(12, 'Book')}

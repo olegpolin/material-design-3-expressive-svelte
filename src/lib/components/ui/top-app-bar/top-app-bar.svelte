@@ -278,7 +278,10 @@
 		data-scrolled={scrolled ? '' : undefined}
 		class={cn(
 			'sticky top-0 z-10 h-16 w-full shrink-0 items-center px-1 text-on-surface',
-			variant === 'center-aligned' ? 'grid grid-cols-[1fr_auto_1fr]' : 'flex',
+			// side columns never shrink below their actions; the title column takes what is left and truncates
+			variant === 'center-aligned'
+				? 'grid grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)]'
+				: 'flex',
 			className
 		)}
 		style:background-color={containerColor}

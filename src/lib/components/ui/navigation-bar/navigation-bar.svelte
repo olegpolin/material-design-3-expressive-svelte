@@ -4,6 +4,7 @@
 	/**
 	 * M3 Expressive navigation bar (navigation-containment.md §1).
 	 * short = flexible bar, 64dp · tall = baseline bar, 80dp. surface-container, level2, corner none.
+	 * Keyboard: Left / Right (mirrored in RTL), Home / End move focus between the items.
 	 */
 	export const navigationBarVariants = tv({
 		base: 'flex w-full shrink-0 rounded-m3-none bg-surface-container shadow-m3-2',
@@ -21,6 +22,7 @@
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { cn, type WithElementRef } from '#lib/utils.js';
 	import { setNavigationBarContext, type NavigationBarLayout, type NavigationBarVariant } from './context.js';
+	import { moveFocusBetweenItems } from './keyboard.js';
 
 	let {
 		ref = $bindable(null),
@@ -28,6 +30,7 @@
 		layout,
 		class: className,
 		children,
+		onkeydown,
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLElement>> & {
 		/** `short` (64dp flexible bar) or `tall` (80dp baseline bar, always vertical items). */
@@ -57,6 +60,10 @@
 	data-variant={variant}
 	data-layout={resolvedLayout}
 	class={cn(navigationBarVariants({ variant }), className)}
+	onkeydown={(e) => {
+		onkeydown?.(e);
+		if (!e.defaultPrevented) moveFocusBetweenItems(e, ref, '.nb-item', 'horizontal');
+	}}
 	{...restProps}
 >
 	<ul data-layout={resolvedLayout} class="nb-list mx-auto flex h-full">

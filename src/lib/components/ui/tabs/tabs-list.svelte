@@ -91,13 +91,22 @@
 				bar.style.transition = '';
 				ready = true;
 			}
-			if (isScrollable && active !== lastActive && lastActive !== null) {
+			if (isScrollable && active !== lastActive) {
+				// RTL scroll containers count scrollLeft from 0 (start) down to -max
 				const max = node.scrollWidth - node.clientWidth;
-				const target = Math.max(0, Math.min(max, active.offsetLeft + active.offsetWidth / 2 - node.clientWidth / 2));
+				const center = active.offsetLeft + active.offsetWidth / 2 - node.clientWidth / 2;
+				const target =
+					getComputedStyle(node).direction === 'rtl'
+						? Math.min(0, Math.max(-max, center))
+						: Math.max(0, Math.min(max, center));
 				cancelScroll?.();
-				cancelScroll = animateSpring(node.scrollLeft, target, activeSpring('default-spatial', node), (v) => {
-					node.scrollLeft = v;
-				});
+				if (lastActive === null) {
+					node.scrollLeft = target; // initial selection: bring it into view without animating
+				} else {
+					cancelScroll = animateSpring(node.scrollLeft, target, activeSpring('default-spatial', node), (v) => {
+						node.scrollLeft = v;
+					});
+				}
 			}
 			lastActive = active;
 		};

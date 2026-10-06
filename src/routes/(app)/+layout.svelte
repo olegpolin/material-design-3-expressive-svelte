@@ -8,6 +8,7 @@
 	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
 	import { Snackbar } from '#lib/components/ui/snackbar/index.js';
 	import { setAppShell, ThemePanel, ThemeToggleButton } from '#lib/components/app/index.js';
+	import { DURATION, EASING } from '#lib/m3/motion.js';
 	import { cn } from '#lib/utils.js';
 	import type { LayoutProps } from './$types';
 
@@ -17,8 +18,10 @@
 	 *   collapsible with its menu button), a "Theme" FAB in the rail header, dark-mode toggle at the foot.
 	 * - medium (600–839px): small top app bar + short navigation bar with horizontal items.
 	 * - compact (< 600px): small top app bar + tall (80dp) navigation bar with vertical items.
-	 * Rail vs. bars is switched with CSS so the server render is right for every width; the bar
-	 * variant and the rail's default expansion need JS (MediaQuery).
+	 * Every window-size switch is pure CSS, so the server render is already right for every width
+	 * (no flash, no animated jump on hydration): the medium / large rails are two instances (collapsed /
+	 * expanded by default) and the compact / medium navigation bars are two instances; only the one
+	 * matching the window is displayed (the others are `display: none`, out of the a11y tree).
 	 * The window scrolls (so SvelteKit's scroll restoration and hash links keep working); the rail is
 	 * sticky, the app bar sticks to the top and the navigation bar to the bottom.
 	 */
@@ -46,15 +49,22 @@
 	});
 
 	const expandedWindow = new MediaQuery('min-width: 840px', false);
-	const mediumWindow = new MediaQuery('min-width: 600px', false);
-	const largeWindow = new MediaQuery('min-width: 1200px', false);
 
-	// Rail: expanded by default on large windows. A manual toggle sticks until the window crosses
-	// the 1200px line again (then the default for the new size wins).
-	let railChoice = $state<{ expanded: boolean; large: boolean } | null>(null);
-	let railExpanded = $derived(
-		railChoice && railChoice.large === largeWindow.current ? railChoice.expanded : largeWindow.current
-	);
+	// Rail: collapsed by default on expanded windows (840–1199px), expanded on large ones (≥ 1200px).
+	// The menu button's choice is remembered per window class for the session (the layout persists
+	// across navigations), so resizing back and forth restores what the user picked for each size.
+	const rails = [
+		{ large: false, class: 'min-[1200px]:hidden' },
+		{ large: true, class: 'hidden min-[1200px]:block' }
+	];
+	let railExpanded = $state({ medium: false, large: true });
+
+	// Navigation bar: tall (80dp) with vertical items on compact windows, short (64dp) with horizontal
+	// items on medium windows.
+	const bars = [
+		{ medium: false, variant: 'tall', layout: 'vertical', class: 'min-[600px]:hidden' },
+		{ medium: true, variant: 'short', layout: 'horizontal', class: 'hidden min-[600px]:flex' }
+	] as const;
 
 	let themeOpen = $state(false);
 
@@ -73,13 +83,16 @@
 	let mainEl = $state<HTMLElement | null>(null);
 
 	// ---------------------------------------------------------------- page transition
-	// M3 fade-through via the View Transitions API: the outgoing page fades out (90ms), the incoming
-	// one fades in and scales 0.92 → 1 (210ms, emphasized decelerate) after it. Only the page area is
-	// captured (the rail / bars stay live, so their indicators animate normally). The transition name
-	// is set only while a transition runs, so the page area is not a permanent stacking context.
-	// Browsers without the API simply navigate. Reduced motion: opacity only (see the styles below).
+	// M3 fade-through (MaterialFadeThrough: long1 = 450ms on the emphasized curve, motion.md §4.1) via
+	// the View Transitions API. The outgoing page fades out over the first 35% of the *eased* progress
+	// (so it is gone after ~70ms), then the incoming page fades in and scales 0.92 → 1. The keyframes
+	// run through WAAPI because only an effect-level easing gives the threshold that meaning. Only the
+	// page area is captured (the rail / bars stay live, so their indicators animate normally); the
+	// transition name is set only while a transition runs, so the page area is not a permanent
+	// stacking context. Reduced motion: cross-fade only. Skipped where the API is missing and in hidden
+	// documents (no rendering there, so the transition would hold the navigation back).
 	onNavigate((navigation) => {
-		if (!document.startViewTransition) return;
+		if (!document.startViewTransition || document.visibilityState === 'hidden') return;
 		const from = navigation.from?.url.pathname;
 		const to = navigation.to?.url.pathname;
 		if (!from || !to || from === to) return;
@@ -89,11 +102,25 @@
 			root.dataset.pageTransition = '';
 			const transition = document.startViewTransition(async () => {
 				resolve();
-				await navigation.complete;
+				// An aborted / failed navigation still has to let the transition finish.
+				await navigation.complete.catch(() => {});
 			});
-			transition.finished.finally(() => delete root.dataset.pageTransition);
+			transition.ready.then(() => fadeThrough(root)).catch(() => {});
+			transition.updateCallbackDone.catch(() => {});
+			transition.finished.catch(() => {}).finally(() => delete root.dataset.pageTransition);
 		});
 	});
+
+	function fadeThrough(root: HTMLElement) {
+		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const timing: KeyframeAnimationOptions = { duration: DURATION.long1, easing: EASING.emphasized, fill: 'both' };
+		const offset = [0, 0.35, 1];
+		root.animate({ opacity: [1, 0, 0], offset }, { ...timing, pseudoElement: '::view-transition-old(page)' });
+		root.animate(
+			reduce ? { opacity: [0, 0, 1], offset } : { opacity: [0, 0, 1], scale: [0.92, 0.92, 1], offset },
+			{ ...timing, pseudoElement: '::view-transition-new(page)' }
+		);
+	}
 
 	// ---------------------------------------------------------------- focus management
 	// After a client-side route change, move focus to the new page's main heading (or the main
@@ -135,26 +162,32 @@
 	<div class="flex min-h-dvh bg-surface text-on-surface">
 		<!-- expanded windows: navigation rail -->
 		<div class="sticky top-0 hidden h-dvh shrink-0 flex-col min-[840px]:flex">
-			<NavigationRail.Root
-				class="min-h-0 flex-1"
-				bind:expanded={
-					() => railExpanded, (v) => (railChoice = { expanded: v, large: largeWindow.current })
-				}
-			>
-				{#snippet header()}
-					<NavigationRail.MenuButton />
-					<NavigationRail.Fab
-						icon="palette"
-						label="Theme"
-						aria-haspopup="dialog"
-						aria-expanded={themeOpen}
-						onclick={() => (themeOpen = true)}
-					/>
-				{/snippet}
-				{#each destinations as d (d.href)}
-					<NavigationRail.Item href={d.href} icon={d.icon} label={d.label} selected={current === d.href} />
-				{/each}
-			</NavigationRail.Root>
+			{#each rails as rail (rail.large)}
+				<NavigationRail.Root
+					class={cn('min-h-0 flex-1', rail.class)}
+					bind:expanded={
+						() => (rail.large ? railExpanded.large : railExpanded.medium),
+						(v) => {
+							if (rail.large) railExpanded.large = v;
+							else railExpanded.medium = v;
+						}
+					}
+				>
+					{#snippet header()}
+						<NavigationRail.MenuButton />
+						<NavigationRail.Fab
+							icon="palette"
+							label="Theme"
+							aria-haspopup="dialog"
+							aria-expanded={themeOpen}
+							onclick={() => (themeOpen = true)}
+						/>
+					{/snippet}
+					{#each destinations as d (d.href)}
+						<NavigationRail.Item href={d.href} icon={d.icon} label={d.label} selected={current === d.href} />
+					{/each}
+				</NavigationRail.Root>
+			{/each}
 			<div class="shrink-0 ps-7 pb-5">
 				<ThemeToggleButton />
 			</div>
@@ -190,19 +223,18 @@
 
 			<!-- compact / medium windows: navigation bar (tall + vertical items on compact, short + horizontal on medium) -->
 			<div class="sticky bottom-0 z-10 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[840px]:hidden">
-				<NavigationBar.Root
-					variant={mediumWindow.current ? 'short' : 'tall'}
-					layout={mediumWindow.current ? 'horizontal' : 'vertical'}
-				>
-					{#each destinations as d (d.href)}
-						<NavigationBar.Item
-							href={d.href}
-							icon={d.icon}
-							label={mediumWindow.current ? d.label : (d.short ?? d.label)}
-							selected={current === d.href}
-						/>
-					{/each}
-				</NavigationBar.Root>
+				{#each bars as bar (bar.medium)}
+					<NavigationBar.Root variant={bar.variant} layout={bar.layout} class={bar.class}>
+						{#each destinations as d (d.href)}
+							<NavigationBar.Item
+								href={d.href}
+								icon={d.icon}
+								label={bar.medium ? d.label : (d.short ?? d.label)}
+								selected={current === d.href}
+							/>
+						{/each}
+					</NavigationBar.Root>
+				{/each}
 			</div>
 		</div>
 	</div>
@@ -221,40 +253,18 @@
 		:root[data-page-transition] [data-page-transition-target] {
 			view-transition-name: page;
 		}
-		/* Everything outside the page area swaps instantly and stays live. */
+		/* Everything outside the page area swaps instantly and stays live; the page's old / new
+		   snapshots are animated from script (fadeThrough above). */
 		::view-transition-old(root),
 		::view-transition-new(root),
-		::view-transition-group(page) {
+		::view-transition-group(page),
+		::view-transition-old(page),
+		::view-transition-new(page) {
 			animation: none;
-		}
-		::view-transition-old(page) {
-			animation: m3-fade-through-out 90ms var(--md-sys-motion-easing-standard-accelerate) both;
 		}
 		::view-transition-new(page) {
 			/* scale around the visible part of the page, not the middle of a long document */
 			transform-origin: 50% min(40vh, 50%);
-			animation: m3-fade-through-in 210ms var(--md-sys-motion-easing-emphasized-decelerate) 90ms both;
-		}
-		@media (prefers-reduced-motion: reduce) {
-			::view-transition-new(page) {
-				animation-name: m3-fade-in;
-			}
-		}
-		@keyframes m3-fade-through-out {
-			to {
-				opacity: 0;
-			}
-		}
-		@keyframes m3-fade-through-in {
-			from {
-				opacity: 0;
-				scale: 0.92;
-			}
-		}
-		@keyframes m3-fade-in {
-			from {
-				opacity: 0;
-			}
 		}
 	}
 </style>

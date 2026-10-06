@@ -6,19 +6,24 @@
 	 * 48dp touch target (the 4dp margin makes the 48dp layout slot; `after:` extends the hit area).
 	 * standard inherits the slot color (leading on-surface / trailing on-surface-variant);
 	 * filled / tonal are the single emphasized trailing action allowed by the app bar spec (§4).
+	 * Toggle (`selected` set) follows the M3E icon-button toggle colors (icon-button.svelte): standard
+	 * selected = primary; filled unselected = surface-container / on-surface-variant; tonal selected =
+	 * secondary / on-secondary. Selected morphs round (20px) → square (12dp) on fastSpatial; colors use
+	 * defaultEffects.
 	 */
 	export const appBarActionVariants = tv({
 		base: [
-			'relative m-1 grid size-10 shrink-0 cursor-pointer place-items-center rounded-m3-full select-none',
-			'after:absolute after:-inset-1',
-			'transition-colors duration-spring-default-effects ease-spring-default-effects',
+			'app-bar-action relative m-1 grid size-10 shrink-0 cursor-pointer place-items-center rounded-[20px] select-none',
+			'aria-pressed:rounded-m3-md after:absolute after:-inset-1',
 			'disabled:cursor-default disabled:text-on-surface/38'
 		],
 		variants: {
 			variant: {
 				standard: 'text-inherit aria-pressed:text-m3-primary',
-				filled: 'bg-m3-primary text-on-primary disabled:bg-on-surface/10',
-				tonal: 'bg-secondary-container text-on-secondary-container disabled:bg-on-surface/10'
+				filled:
+					'bg-m3-primary text-on-primary aria-[pressed=false]:bg-surface-container aria-[pressed=false]:text-on-surface-variant disabled:bg-on-surface/10',
+				tonal:
+					'bg-secondary-container text-on-secondary-container aria-pressed:bg-m3-secondary aria-pressed:text-on-secondary disabled:bg-on-surface/10'
 			}
 		},
 		defaultVariants: { variant: 'standard' }
@@ -67,3 +72,13 @@
 	{/if}
 	{@render children?.()}
 </button>
+
+<style>
+	.app-bar-action {
+		transition:
+			color var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects-easing),
+			background-color var(--md-sys-motion-spring-default-effects-duration)
+				var(--md-sys-motion-spring-default-effects-easing),
+			border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing);
+	}
+</style>

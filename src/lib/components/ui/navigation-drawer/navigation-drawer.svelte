@@ -71,9 +71,13 @@
 				data-variant="modal"
 				class={cn(
 					'fixed inset-y-0 start-0 z-50 flex h-full w-[360px] max-w-[calc(100vw-56px)] flex-col overflow-y-auto',
-					'rounded-e-m3-lg bg-surface-container-low px-3 py-3 text-on-surface shadow-m3-1 outline-none',
-					'data-open:animate-in data-open:slide-in-from-left data-open:duration-spring-default-spatial data-open:ease-spring-default-spatial',
-					'data-closed:animate-out data-closed:slide-out-to-left data-closed:duration-spring-fast-effects data-closed:ease-spring-fast-effects',
+					'rounded-e-m3-lg bg-surface-container-low px-3 py-3 text-on-surface outline-none',
+					// level1 + a 24px slab of the container color behind the start edge, so the defaultSpatial
+					// overshoot of the slide-in never opens a gap at the screen edge
+					'shadow-[-24px_0_0_0_var(--md-sys-color-surface-container-low),var(--md-sys-elevation-level1)]',
+					'rtl:shadow-[24px_0_0_0_var(--md-sys-color-surface-container-low),var(--md-sys-elevation-level1)]',
+					'data-open:animate-in data-open:slide-in-from-start data-open:duration-spring-default-spatial data-open:ease-spring-default-spatial',
+					'data-closed:animate-out data-closed:slide-out-to-start data-closed:duration-spring-fast-effects data-closed:ease-spring-fast-effects',
 					className
 				)}
 				{...contentProps}

@@ -42,7 +42,9 @@
 		ctx.scrollable ? 'min-w-[90px] flex-none' : 'min-w-0 flex-1',
 		'text-on-surface-variant hover:text-on-surface focus-visible:text-on-surface',
 		primary ? 'data-[state=active]:text-m3-primary' : 'data-[state=active]:text-on-surface',
+		// color fades in on defaultEffects, out (tab losing selection) on fastEffects (§7 Motion)
 		'transition-colors duration-spring-default-effects ease-spring-default-effects',
+		'data-[state=inactive]:duration-spring-fast-effects data-[state=inactive]:ease-spring-fast-effects',
 		'focus-visible:outline-offset-[-3px]',
 		'disabled:cursor-default disabled:text-on-surface/38',
 		className
