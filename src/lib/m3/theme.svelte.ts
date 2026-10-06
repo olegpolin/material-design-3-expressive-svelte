@@ -48,6 +48,15 @@ export const SCHEME_VARIANTS: readonly { value: SchemeVariant; label: string }[]
 
 export const DEFAULT_SEED = '#6750A4';
 const HEX_RE = /^#?[0-9a-f]{6}$/i;
+const STORAGE_KEY = 'm3-theme';
+
+interface PersistedTheme {
+	seed: string;
+	variant: SchemeVariant;
+	contrast: number;
+	specVersion: SpecVersion;
+	motionScheme: MotionScheme;
+}
 
 function schemeClass(mcu: MCU, variant: SchemeVariant) {
 	switch (variant) {
@@ -187,12 +196,51 @@ export class ThemeState {
 	 * because it creates effects. Effects never run on the server.
 	 */
 	start() {
+		this.#restore();
 		$effect(() => {
 			if (!this.isBaseline && !this.#mcu) {
 				import('@material/material-color-utilities').then((m) => (this.#mcu = m));
 			}
 		});
 		$effect(() => this.apply());
+		$effect(() => this.#persist());
+	}
+
+	/** Load the saved configuration from localStorage (browser only, best effort). */
+	#restore() {
+		if (typeof localStorage === 'undefined') return;
+		try {
+			const raw = localStorage.getItem(STORAGE_KEY);
+			if (!raw) return;
+			const saved = JSON.parse(raw) as Partial<PersistedTheme>;
+			if (typeof saved.seed === 'string' && HEX_RE.test(saved.seed)) this.seed = saved.seed;
+			if (SCHEME_VARIANTS.some((v) => v.value === saved.variant)) this.variant = saved.variant as SchemeVariant;
+			if (typeof saved.contrast === 'number' && saved.contrast >= -1 && saved.contrast <= 1)
+				this.contrast = saved.contrast;
+			if (saved.specVersion === '2021' || saved.specVersion === '2025') this.specVersion = saved.specVersion;
+			if (saved.motionScheme === 'expressive' || saved.motionScheme === 'standard')
+				this.motionScheme = saved.motionScheme;
+		} catch {
+			// ignore corrupt or blocked storage
+		}
+	}
+
+	/** Save the configuration (runs in an effect, so it tracks every field it reads). */
+	#persist() {
+		const data: PersistedTheme = {
+			seed: this.seed,
+			variant: this.variant,
+			contrast: this.contrast,
+			specVersion: this.specVersion,
+			motionScheme: this.motionScheme
+		};
+		if (typeof localStorage === 'undefined') return;
+		try {
+			if (this.isBaseline && this.motionScheme === 'expressive') localStorage.removeItem(STORAGE_KEY);
+			else localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+		} catch {
+			// storage unavailable (private mode, quota): the theme still works for the session
+		}
 	}
 }
 

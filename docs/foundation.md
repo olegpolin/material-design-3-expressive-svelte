@@ -298,7 +298,7 @@ theme.reset();                    // back to the static baseline (removes inline
 | `cssVars` | The active mode's `{ '--md-sys-color-…': hex }` |
 | `apply()` | Writes the vars and `data-motion-scheme` to `<html>`. The effect in `start()` calls it automatically. |
 | `toCss()` | Stylesheet text with both schemes (`:root` / `.dark`) |
-| `start()` | Creates the effects. Call only during component init. |
+| `start()` | Creates the effects and restores the saved configuration from `localStorage` (`m3-theme`); every later change is saved. Call only during component init. |
 | `createTheme()` / `getTheme()` | `createContext` pair |
 | `SCHEME_VARIANTS`, `DEFAULT_SEED`, `buildColorMap(mcu, seed, isDark, variant?, contrast?, spec?)`, `type SchemeVariant`, `type SpecVersion` | |
 
