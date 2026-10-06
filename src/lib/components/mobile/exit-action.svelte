@@ -16,6 +16,7 @@
 	aria-label="Exit to site"
 	title="Exit to site"
 	data-sveltekit-preload-data="tap"
+	data-sveltekit-reset="true"
 	class={cn(appBarActionVariants(), 'min-[600px]:hidden', className)}
 	{@attach ripple()}
 >

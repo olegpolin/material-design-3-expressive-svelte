@@ -125,9 +125,12 @@
 </svelte:head>
 
 <BitsConfig defaultPortalTo="#pulse-screen">
+	<!-- reset="false": in the stacked frame layout (600–1099px) the browser page scrolls; navigating
+	     between screens must not jump it back to the top -->
 	<div
 		data-slot="pulse-stage"
-		class="min-[600px]:flex min-[600px]:min-h-dvh min-[600px]:flex-col min-[600px]:items-center min-[600px]:justify-center min-[600px]:gap-8 min-[600px]:bg-surface-container-low min-[600px]:p-6 min-[1100px]:flex-row min-[1100px]:gap-16"
+		data-sveltekit-reset="false"
+		class="pulse-stage min-[600px]:flex min-[600px]:min-h-dvh min-[600px]:flex-col min-[600px]:items-center min-[600px]:justify-center min-[600px]:gap-8 min-[600px]:bg-surface-container-low min-[600px]:p-6 min-[1100px]:flex-row min-[1100px]:gap-16"
 	>
 		<!-- ===================================================== backdrop controls (frame only) -->
 		<aside
@@ -162,7 +165,7 @@
 			</nav>
 
 			<div class="flex flex-wrap items-center justify-between gap-4">
-				<Button href="/" variant="tonal" size="sm">
+				<Button href="/" variant="tonal" size="sm" data-sveltekit-reset>
 					<Icon name="arrow_back" data-icon="inline-start" />
 					Exit to site
 				</Button>
@@ -180,68 +183,85 @@
 		</aside>
 
 		<!-- ===================================================== device -->
+		<!-- The slot reserves the scaled footprint; the device keeps its 436 × 939 logical size (412 × 915
+		     screen + 12px bezel) and is scaled down to fit the viewport height minus 48px. -->
 		<div
-			data-slot="pulse-device"
-			class="fixed inset-0 flex min-[600px]:relative min-[600px]:inset-auto min-[600px]:h-[min(939px,calc(100dvh-48px))] min-[600px]:min-h-[640px] min-[600px]:w-[436px] min-[600px]:shrink-0 min-[600px]:rounded-[48px] min-[600px]:bg-surface-container-highest min-[600px]:p-3 min-[600px]:shadow-m3-3 min-[600px]:ring-1 min-[600px]:ring-outline-variant"
+			data-slot="pulse-device-slot"
+			class="contents min-[600px]:relative min-[600px]:block min-[600px]:h-[calc(939px*var(--pulse-scale))] min-[600px]:w-[calc(436px*var(--pulse-scale))] min-[600px]:shrink-0"
 		>
 			<div
-				id="pulse-screen"
-				class="pulse-screen relative flex size-full flex-col overflow-hidden bg-surface text-on-surface min-[600px]:rounded-[36px]"
-				style:filter={shell.brightness < 100 ? `brightness(${0.35 + (0.65 * shell.brightness) / 100})` : undefined}
+				data-slot="pulse-device"
+				class="fixed inset-0 flex min-[600px]:absolute min-[600px]:inset-auto min-[600px]:top-0 min-[600px]:left-0 min-[600px]:h-[939px] min-[600px]:w-[436px] min-[600px]:origin-top-left min-[600px]:scale-(--pulse-scale) min-[600px]:rounded-[48px] min-[600px]:bg-surface-container-highest min-[600px]:p-3 min-[600px]:shadow-m3-3 min-[600px]:ring-1 min-[600px]:ring-outline-variant"
 			>
-				<!-- status bar -->
 				<div
-					aria-hidden="true"
-					class="type-label-lg relative z-20 hidden h-8 shrink-0 items-center justify-between bg-surface px-6 text-on-surface min-[600px]:flex"
-					style:background-color={statusBg}
-					style:transition={statusTransition ??
-						'background-color var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects-easing)'}
+					id="pulse-screen"
+					{@attach (node) => {
+						shell.screen = node;
+						return () => (shell.screen = null);
+					}}
+					class="pulse-screen relative flex size-full flex-col overflow-hidden bg-surface pt-[env(safe-area-inset-top)] text-on-surface min-[600px]:rounded-[36px] min-[600px]:pt-0"
+					style:filter={shell.brightness < 100 ? `brightness(${0.35 + (0.65 * shell.brightness) / 100})` : undefined}
 				>
-					<span class="tabular-nums">9:30</span>
-					<span class="absolute top-1.5 left-1/2 size-5 -translate-x-1/2 rounded-m3-full bg-scrim"></span>
-					<span class="flex items-center gap-1">
-						<Icon name="signal_cellular_alt" size={18} fill />
-						<Icon name="wifi" size={18} fill />
-						<Icon name="battery_5_bar" size={18} fill class="rotate-90" />
-					</span>
-				</div>
+					<!-- status bar: the background strip follows the app bar color and sits under every overlay
+					     (scrims, sheets, the search view and the drawer draw edge to edge, as on Android 15);
+					     time and system icons stay on top of everything -->
+					<div
+						aria-hidden="true"
+						class="relative z-20 hidden h-8 shrink-0 bg-surface min-[600px]:block"
+						style:background-color={statusBg}
+						style:transition={statusTransition ??
+							'background-color var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects-easing)'}
+					></div>
+					<div
+						aria-hidden="true"
+						class="type-label-lg pointer-events-none absolute inset-x-0 top-0 z-[60] hidden h-8 items-center justify-between px-6 text-on-surface min-[600px]:flex"
+					>
+						<span class="tabular-nums">9:30</span>
+						<span class="absolute top-1.5 left-1/2 size-5 -translate-x-1/2 rounded-m3-full bg-[#000]"></span>
+						<span class="flex items-center gap-1">
+							<Icon name="signal_cellular_alt" size={18} fill />
+							<Icon name="wifi" size={18} fill />
+							<Icon name="battery_5_bar" size={18} fill class="rotate-90" />
+						</span>
+					</div>
 
-				<!-- content: one scroll container per destination -->
-				<div
-					class="pulse-content relative min-h-0 flex-1 overflow-hidden"
-					onscrollcapture={onContentScroll}
-				>
-					{#key page.url.pathname}
-						<div
-							data-pulse-scroller=""
-							class="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:none]"
-							in:sharedAxisX={{ incoming: true }}
-							out:sharedAxisX={{ incoming: false }}
-						>
-							{@render children()}
+					<!-- content: one scroll container per destination -->
+					<main
+						class="pulse-content relative min-h-0 flex-1 overflow-hidden"
+						onscrollcapture={onContentScroll}
+					>
+						{#key page.url.pathname}
+							<div
+								data-pulse-scroller=""
+								class="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:none]"
+								in:sharedAxisX={{ incoming: true }}
+								out:sharedAxisX={{ incoming: false }}
+							>
+								{@render children()}
+							</div>
+						{/key}
+						<Snackbar
+							offset={{ top: 12, right: 12, left: 12, bottom: snackbarInset + 12 }}
+							mobileOffset={{ top: 8, right: 8, left: 8, bottom: snackbarInset + 8 }}
+						/>
+					</main>
+
+					<!-- navigation bar (+ gesture bar in the frame, safe-area inset on phones) -->
+					<div class="relative z-20 shrink-0 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:pb-0">
+						<NavigationBar variant="tall" aria-label="Primary">
+							{#each destinations as d, i (d.id)}
+								<NavigationBarItem
+									href={d.href}
+									icon={d.icon}
+									label={d.label}
+									selected={i === activeIndex}
+									badge={d.id === 'library' ? libraryBadge : undefined}
+								/>
+							{/each}
+						</NavigationBar>
+						<div aria-hidden="true" class="hidden h-6 items-center justify-center min-[600px]:flex">
+							<span class="h-1 w-28 rounded-m3-full bg-on-surface/40"></span>
 						</div>
-					{/key}
-					<Snackbar
-						offset={{ top: 12, right: 12, left: 12, bottom: snackbarInset + 12 }}
-						mobileOffset={{ top: 8, right: 8, left: 8, bottom: snackbarInset + 8 }}
-					/>
-				</div>
-
-				<!-- navigation bar (+ gesture bar in the frame, safe-area inset on phones) -->
-				<div class="relative z-20 shrink-0 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:pb-0">
-					<NavigationBar variant="tall" aria-label="Primary">
-						{#each destinations as d, i (d.id)}
-							<NavigationBarItem
-								href={d.href}
-								icon={d.icon}
-								label={d.label}
-								selected={i === activeIndex}
-								badge={d.id === 'library' ? libraryBadge : undefined}
-							/>
-						{/each}
-					</NavigationBar>
-					<div aria-hidden="true" class="hidden h-6 items-center justify-center min-[600px]:flex">
-						<span class="h-1 w-28 rounded-m3-full bg-on-surface/40"></span>
 					</div>
 				</div>
 			</div>
@@ -253,7 +273,7 @@
 		variant="modal"
 		bind:open={shell.drawerOpen}
 		headline="Pulse"
-		class="max-w-[calc(100%-56px)]"
+		class="max-w-[calc(100%-56px)] min-[600px]:pt-11"
 	>
 		{#each destinations as d, i (d.id)}
 			<NavigationDrawerItem
@@ -279,6 +299,21 @@
 </BitsConfig>
 
 <style>
+	/* Frame scale: fit the 939px-tall device into the viewport height minus the 48px stage padding.
+	   tan(atan2(a, b)) turns the length ratio a / b into a plain number in pure CSS (no JS, no flash). */
+	.pulse-stage {
+		--pulse-scale: 1;
+	}
+	@media (min-width: 600px) {
+		.pulse-stage {
+			--pulse-scale: clamp(0.5, tan(atan2(100dvh - 48px, 939px)), 1);
+		}
+		/* the full-screen search view draws under the status bar: keep its field below the clock */
+		.pulse-stage :global(#pulse-screen > [data-slot='search-view-fullscreen']) {
+			padding-top: 32px;
+		}
+	}
+
 	/* Containing block for position: fixed descendants (see the comment in <script>). */
 	.pulse-screen,
 	.pulse-content {

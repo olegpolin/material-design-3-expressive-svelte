@@ -15,6 +15,7 @@
 	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { AppBarAction, TopAppBar } from '#lib/components/ui/top-app-bar/index.js';
 	import type { MotionScheme } from '#lib/m3/motion.js';
+	import { ripple } from '#lib/m3/ripple.svelte.js';
 	import { shapePath } from '#lib/m3/shapes.js';
 	import { getTheme } from '#lib/m3/theme.svelte.js';
 	import ExitAction from '#lib/components/mobile/exit-action.svelte';
@@ -28,6 +29,9 @@
 	let gapless = $state(true);
 	let normalize = $state(false);
 	let episodes = $state(true);
+	let recap = $state(false);
+	/** Motion preview: flips on every scheme change (and on tap) so the spatial spring visibly replays. */
+	let demoEnd = $state(false);
 	let volume = $state(72);
 	let syncing = $state(true);
 	let aboutOpen = $state(false);
@@ -148,9 +152,19 @@
 				<Slider bind:value={shell.brightness} min={20} max={100} size="xs" class="w-36" aria-label="Brightness" />
 			{/snippet}
 		</ListItem>
+	</List>
+
+	<!-- notifications -->
+	{@render groupTitle('Notifications')}
+	<List variant="segmented" class="px-4">
 		<ListItem headline="New episode alerts" supportingText="From shows you follow" leadingIcon="notifications">
 			{#snippet trailing()}
 				<Switch bind:checked={episodes} aria-label="New episode alerts" />
+			{/snippet}
+		</ListItem>
+		<ListItem headline="Weekly recap" supportingText="Your top tracks every Monday" leadingIcon="insights">
+			{#snippet trailing()}
+				<Switch bind:checked={recap} aria-label="Weekly recap" />
 			{/snippet}
 		</ListItem>
 	</List>
@@ -160,7 +174,7 @@
 	<div class="mx-4 flex flex-col gap-4 rounded-m3-lg bg-surface-container px-4 py-4">
 		<div class="flex flex-col gap-2">
 			<span class="type-title-sm text-on-surface">Seed color</span>
-			<ChipSet aria-label="Seed color">
+			<ChipSet scroll aria-label="Seed color" class="-mx-4 px-4">
 				{#each seedColors as s (s.hex)}
 					<Chip
 						variant="filter"
@@ -191,16 +205,42 @@
 				type="single"
 				required
 				itemVariant="tonal"
-				bind:value={() => theme.motionScheme, (v) => (theme.motionScheme = v as MotionScheme)}
+				bind:value={
+					() => theme.motionScheme,
+					(v) => {
+						theme.motionScheme = v as MotionScheme;
+						demoEnd = !demoEnd;
+					}
+				}
 				aria-labelledby="motion-scheme-label"
 			>
 				<ButtonGroupItem value="expressive" icon="bubble_chart">Expressive</ButtonGroupItem>
 				<ButtonGroupItem value="standard" icon="linear_scale">Standard</ButtonGroupItem>
 			</ButtonGroup>
+			<!-- spring preview: the shape travels on the default spatial spring of the active scheme -->
+			<button
+				type="button"
+				class="@container relative h-14 w-full cursor-pointer rounded-m3-full bg-surface-container-highest"
+				aria-label="Replay motion preview"
+				onclick={() => (demoEnd = !demoEnd)}
+				{@attach ripple()}
+			>
+				<span
+					aria-hidden="true"
+					class={[
+						'pulse-demo absolute top-1 start-1 size-12',
+						demoEnd && 'translate-x-[calc(100cqw-56px)] rotate-180 rtl:-translate-x-[calc(100cqw-56px)]'
+					]}
+				>
+					<svg viewBox="0 0 100 100" class="size-full">
+						<path d={shapePath('cookie9Sided')} class="fill-tertiary" />
+					</svg>
+				</span>
+			</button>
 			<p class="type-body-sm text-on-surface-variant">
 				{theme.motionScheme === 'expressive'
-					? 'Springs overshoot slightly for a lively feel.'
-					: 'Critically damped springs for calmer motion.'}
+					? 'Springs overshoot slightly for a lively feel. Tap the track to replay.'
+					: 'Critically damped springs for calmer motion. Tap the track to replay.'}
 			</p>
 		</div>
 	</div>
@@ -306,6 +346,11 @@
 </AlertDialog.Root>
 
 <style>
+	.pulse-demo {
+		transition:
+			translate var(--md-sys-motion-spring-slow-spatial-duration) var(--md-sys-motion-spring-slow-spatial-easing),
+			rotate var(--md-sys-motion-spring-slow-spatial-duration) var(--md-sys-motion-spring-slow-spatial-easing);
+	}
 	.pulse-spin {
 		animation: pulse-spin 24s linear infinite;
 	}

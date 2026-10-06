@@ -17,8 +17,10 @@
 	import * as Toolbar from '#lib/components/ui/toolbar/index.js';
 	import { AppBarAction, TopAppBar } from '#lib/components/ui/top-app-bar/index.js';
 	import ExitAction from '#lib/components/mobile/exit-action.svelte';
+	import { getMobileShell } from '#lib/components/mobile/shell.svelte.js';
 	import { attachmentOptions, noteCategories } from '#lib/components/mobile/data.js';
 
+	const shell = getMobileShell();
 	const uid = $props.id();
 	const priorities = ['Low', 'Normal', 'Medium', 'High', 'Urgent'];
 	const visibilities = [
@@ -43,6 +45,8 @@
 	let sheetOpen = $state(false);
 	let discardOpen = $state(false);
 	let titleRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
+	let bodyRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
+	let categoryRef = $state<HTMLButtonElement | null>(null);
 
 	let titleError = $derived(submitted && !title.trim());
 	let bodyError = $derived(submitted && !body.trim());
@@ -73,18 +77,23 @@
 		submitted = true;
 		if (titleError || bodyError || categoryError) {
 			await tick();
-			if (titleError) titleRef?.focus();
-			snackbar('Fill in the highlighted fields');
+			// move focus to the first invalid field, in reading order
+			const first = titleError ? titleRef : bodyError ? bodyRef : categoryRef;
+			first?.focus();
+			first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+			const missing = [titleError, bodyError, categoryError].filter(Boolean).length;
+			snackbar(missing === 1 ? 'Fill in the highlighted field' : `Fill in the ${missing} highlighted fields`);
 			return;
 		}
 		const saved = title.trim();
 		reset();
-		snackbar(`Note “${saved}” saved`, { action: 'View', onAction: () => goto('/mobile') });
+		await goto('/mobile', { reset: false });
+		snackbar(`Note “${saved}” saved to your profile`);
 	}
 
 	function close() {
 		if (dirty) discardOpen = true;
-		else goto('/mobile');
+		else goto('/mobile', { reset: false });
 	}
 
 	function attach(id: string) {
@@ -132,6 +141,7 @@
 	/>
 
 	<TextField
+		bind:ref={bodyRef}
 		bind:value={body}
 		variant="filled"
 		label="Note"
@@ -156,22 +166,22 @@
 	<div class="flex flex-col gap-1">
 		<Select.Root type="single" bind:value={category}>
 			<Select.Trigger
+				bind:ref={categoryRef}
 				id="{uid}-category"
 				class="w-full"
-				aria-label="Category"
+				label="Category"
+				required
 				aria-invalid={categoryError || undefined}
+				aria-describedby="{uid}-category-help"
 			>
-				<span data-slot="select-value">
+				<span data-slot="select-value" class="flex items-center gap-3">
 					{#if categoryLabel}
 						<Icon name={categoryLabel.icon} class="text-on-surface-variant" />
 						{categoryLabel.label}
-					{:else}
-						<Icon name="category" class="text-on-surface-variant" />
-						Category
 					{/if}
 				</span>
 			</Select.Trigger>
-			<Select.Content>
+			<Select.Content collisionBoundary={shell.screen} collisionPadding={8}>
 				<Select.Group>
 					{#each noteCategories as c (c.value)}
 						<Select.Item value={c.value} label={c.label}>
@@ -182,7 +192,7 @@
 				</Select.Group>
 			</Select.Content>
 		</Select.Root>
-		<p class={['type-body-sm px-4', categoryError ? 'text-error' : 'text-on-surface-variant']}>
+		<p id="{uid}-category-help" class={['type-body-sm px-4', categoryError ? 'text-error' : 'text-on-surface-variant']}>
 			{categoryError ? 'Choose a category' : 'Helps followers find your note'}
 		</p>
 	</div>
@@ -338,7 +348,7 @@
 				onclick={() => {
 					discardOpen = false;
 					reset();
-					goto('/mobile');
+					goto('/mobile', { reset: false });
 				}}
 			>
 				Discard

@@ -13,6 +13,8 @@ export class MobileShell {
 	position = $state(0.38);
 	/** Settings › Brightness (percent); dims the phone screen below 100. */
 	brightness = $state(100);
+	/** The phone screen (`#pulse-screen`): portal target and collision boundary for menus. */
+	screen = $state<HTMLElement | null>(null);
 
 	play(track: Track) {
 		if (track.id !== this.track.id) {
