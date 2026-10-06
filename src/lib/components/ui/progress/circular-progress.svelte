@@ -85,6 +85,7 @@
 		viewBox="0 0 {diameter} {diameter}"
 		class="block size-full overflow-visible"
 		aria-hidden="true"
+		{@attach anim.observe}
 	>
 		<g fill="none" stroke-width={t} stroke-linecap="round" stroke-linejoin="round">
 			{#if geometry.track}

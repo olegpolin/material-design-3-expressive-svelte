@@ -61,6 +61,7 @@
 		bind:ref
 		data-slot="tooltip-content"
 		data-variant={variant}
+		role={variant === "plain" ? "tooltip" : undefined}
 		{sideOffset}
 		{side}
 		class={cn(tooltipVariants({ variant }), className)}

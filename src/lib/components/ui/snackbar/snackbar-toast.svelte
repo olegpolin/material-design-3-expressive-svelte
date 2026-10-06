@@ -24,7 +24,10 @@
 		onAction?: () => void;
 		/** Show the close (×) icon button. */
 		closable?: boolean;
-		/** Long action label on its own line (12dp offset, 4dp bottom padding). */
+		/**
+	 * Long action label on its own line (Compose `NewLineButtonSnackbar`): text first baseline 30dp
+	 * from the top and 12dp above the button row, 40dp button row, 2dp bottom → 84dp for one line.
+	 */
 		actionOnNewLine?: boolean;
 		/** Injected by svelte-sonner. */
 		closeToast?: () => void;
@@ -53,7 +56,8 @@
 		class={cn(
 			"type-body-md min-w-0 flex-1 py-3.5",
 			hasButtons && "pe-2",
-			actionOnNewLine && "pt-3.5 pb-0"
+			// body-medium 14/20 puts the first baseline ~15px into the line box: 15 + 15 = 30dp, 5 + 7 = 12dp.
+			actionOnNewLine && "pt-[15px] pb-[7px]"
 		)}
 	>
 		{message}
@@ -61,7 +65,7 @@
 	{#if hasButtons}
 		<div
 			data-slot="snackbar-actions"
-			class={cn("flex shrink-0 items-center", actionOnNewLine && "mt-1.5 justify-end pb-1")}
+			class={cn("flex shrink-0 items-center", actionOnNewLine && "justify-end pb-0.5")}
 		>
 			{#if action}
 				<button

@@ -33,7 +33,10 @@
 
 	const anim = new ProgressAnimator(() => ({ fraction, indeterminate: isIndeterminate, wavy }));
 
-	let width = $state(0);
+	// Fractional width (contentRect, not the rounded clientWidth) so the stop dot and the track end
+	// land exactly on the container edge.
+	let rect = $state<DOMRectReadOnly>();
+	let width = $derived(rect?.width ?? 0);
 	let t = $derived(thick ? PROGRESS.thickThickness : PROGRESS.thickness);
 	let amplitudePx = $derived(PROGRESS.linear.amplitude * anim.amplitude);
 	// Wavy container = 2 × amplitude + thickness (10dp / 14dp thick); flat = thickness.
@@ -95,13 +98,13 @@
 	style="height: {height}px; {style ?? ''}"
 	{...restProps}
 >
-	<div class="size-full" bind:clientWidth={width}>
+	<div class="size-full" bind:contentRect={rect} {@attach anim.observe}>
 		{#if width > 0}
 			<svg
 				width={width}
 				height={height}
 				viewBox="0 0 {width} {height}"
-				class="block overflow-visible"
+				class="block overflow-visible rtl:-scale-x-100"
 				aria-hidden="true"
 			>
 				<g fill="none" stroke-width={t} stroke-linecap="round" stroke-linejoin="round">

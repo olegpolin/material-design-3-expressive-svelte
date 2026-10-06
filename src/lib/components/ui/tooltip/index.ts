@@ -3,6 +3,7 @@ import Portal from "./tooltip-portal.svelte";
 import Provider from "./tooltip-provider.svelte";
 import Trigger from "./tooltip-trigger.svelte";
 import Action from "./tooltip-action.svelte";
+import Persistent from "./tooltip-persistent.svelte";
 import Root from "./tooltip.svelte";
 
 export { tooltipVariants, type TooltipVariant } from "./tooltip-content.svelte";
@@ -14,6 +15,7 @@ export {
 	Provider,
 	Portal,
 	Action,
+	Persistent,
 	//
 	Root as Tooltip,
 	Content as TooltipContent,
@@ -21,4 +23,5 @@ export {
 	Provider as TooltipProvider,
 	Portal as TooltipPortal,
 	Action as TooltipAction,
+	Persistent as TooltipPersistent,
 };

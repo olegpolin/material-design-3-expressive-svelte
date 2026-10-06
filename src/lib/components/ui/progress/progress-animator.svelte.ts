@@ -2,6 +2,7 @@ import { untrack } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import { animateSpring } from '#lib/m3/motion.js';
 import { PROGRESS, animateTween, ease, targetAmplitude } from './geometry.js';
+import { observeVisibility, onFrame } from './frame-clock.js';
 
 export interface ProgressInput {
 	/** Target progress 0–1. */
@@ -15,12 +16,15 @@ export interface ProgressInput {
  * - `shown`: displayed progress. Flat: spring(ζ 1, k 50). Wavy: 500ms linear tween.
  * - `amplitude`: 0–1 wave amplitude factor. 0 at ≤10% / ≥95% (determinate), ramps 500ms
  *   (standard up, emphasized-accelerate down). Always 0 under reduced motion (flat fallback).
- * - `now`: rAF clock (ms) while something moves (wave travel or indeterminate cycle).
+ * - `now`: shared rAF clock (ms) while something moves (wave travel or indeterminate cycle)
+ *   and the indicator is on screen (attach `observe` to its element).
  */
 export class ProgressAnimator {
 	shown = $state(0);
 	amplitude = $state(0);
 	now = $state(0);
+	/** False while the indicator is scrolled out of view (the clock pauses). */
+	visible = $state(true);
 	#input: () => ProgressInput;
 
 	reduced = $derived(prefersReducedMotion.current);
@@ -35,11 +39,16 @@ export class ProgressAnimator {
 		return indeterminate || (wavy && !this.reduced && this.amplitude > 0);
 	});
 
+	/** Attachment for the indicator element: pauses the clock while it is off screen. */
+	observe = (el: Element) => observeVisibility(el, (v) => (this.visible = v));
+
 	constructor(input: () => ProgressInput) {
 		this.#input = input;
 		const initial = untrack(input);
+		const reducedAtStart = untrack(() => this.reduced);
 		this.shown = initial.fraction;
-		this.amplitude = initial.wavy && !initial.indeterminate ? targetAmplitude(initial.fraction) : initial.wavy ? 1 : 0;
+		this.amplitude =
+			!initial.wavy || reducedAtStart ? 0 : initial.indeterminate ? 1 : targetAmplitude(initial.fraction);
 
 		let velocity = 0;
 		$effect(() => {
@@ -76,14 +85,8 @@ export class ProgressAnimator {
 		});
 
 		$effect(() => {
-			if (!this.#ticking) return;
-			let raf = 0;
-			const tick = (t: number) => {
-				this.now = t;
-				raf = requestAnimationFrame(tick);
-			};
-			raf = requestAnimationFrame(tick);
-			return () => cancelAnimationFrame(raf);
+			if (!this.#ticking || !this.visible) return;
+			return onFrame((t) => (this.now = t));
 		});
 	}
 }

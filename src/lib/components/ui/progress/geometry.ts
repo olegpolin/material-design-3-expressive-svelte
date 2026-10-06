@@ -105,17 +105,26 @@ export function linearIndeterminateLines(ms: number): [number, number][] {
 	]);
 }
 
-/** Indeterminate circular: start angle (deg, 0 = 12 o'clock) and sweep fraction at time `ms`. */
+/**
+ * Indeterminate circular: start angle (deg, 0 = 12 o'clock) and sweep fraction at time `ms`.
+ *
+ * Matches what Compose actually renders (ProgressIndicator.kt keyframes). In a Compose
+ * `keyframes {}` block, `value at t using easing` sets the easing of the interval that *starts*
+ * at `t`, and intervals without `using` are linear. So although the source attaches
+ * emphasized-decelerate to the 90° keyframes and standard to the 0.87 keyframe, the shipped motion is:
+ * - each +90° step (0–300, 1500–1800, 3000–3300, 4500–4800ms) is linear;
+ * - the arc grows 0.1 → 0.87 linearly over 0–3000ms and shrinks back with standard easing.
+ */
 export function circularIndeterminate(ms: number) {
 	const c = PROGRESS.circular;
 	const t = ms % c.cycleMs;
 	const global = (c.globalRotation * t) / c.cycleMs;
 	const step = Math.floor(t / c.stepMs);
-	const additional = 90 * step + 90 * ease.emphasizedDecelerate(clamp01((t - step * c.stepMs) / c.stepDurationMs));
+	const additional = 90 * step + 90 * clamp01((t - step * c.stepMs) / c.stepDurationMs);
 	const half = c.cycleMs / 2;
 	const arc =
 		t < half
-			? c.minArc + (c.maxArc - c.minArc) * ease.standard(t / half)
+			? c.minArc + (c.maxArc - c.minArc) * (t / half)
 			: c.maxArc - (c.maxArc - c.minArc) * ease.standard((t - half) / half);
 	return { start: global + additional, sweep: arc };
 }

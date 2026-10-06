@@ -5,8 +5,9 @@
 
 	/**
 	 * shadcn-compatible `Spinner`, rendered as the M3 Expressive loading indicator (shape morph).
-	 * Defaults to `size-4` in `currentColor` so it drops into buttons like the old lucide spinner;
-	 * pass `class="size-12"` (48dp) for the spec size.
+	 * Sized by the host button's icon token (`--btn-icon`: 20dp for xs/s, 24dp for m …) and 20dp
+	 * elsewhere, in `currentColor`, so it replaces a button's leading icon 1:1.
+	 * Pass `class="size-12"` (48dp) for the standalone spec size.
 	 */
 	let {
 		class: className,
@@ -22,6 +23,6 @@
 	{role}
 	{color}
 	aria-label={ariaLabel}
-	class={cn("size-4", className)}
+	class={cn("size-[var(--btn-icon,20px)]", className)}
 	{...restProps}
 />

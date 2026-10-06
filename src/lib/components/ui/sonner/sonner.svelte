@@ -18,6 +18,8 @@
 		mobileOffset = 8,
 		visibleToasts = 1,
 		closeButtonAriaLabel = "Dismiss",
+		// Swipe sideways (or down, toward the edge it came from) to dismiss, like Android snackbars.
+		swipeDirections = ["left", "right", "bottom"],
 		...restProps
 	}: SonnerProps = $props();
 </script>
@@ -100,6 +102,10 @@
 		}
 		[data-m3-toaster] [data-sonner-toast][data-swiping='true']:not(#\#) {
 			transition: none;
+		}
+		/* A swiped-away snackbar leaves at full size (sonner's swipe-out keyframes reuse --y). */
+		[data-m3-toaster] [data-sonner-toast][data-swipe-out='true'][data-removed='true']:not(#\#) {
+			--y: scale(1);
 		}
 
 		/* ---- toast() (styled) toasts → M3 snackbar surface ---- */

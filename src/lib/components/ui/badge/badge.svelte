@@ -3,16 +3,21 @@
 
 	/**
 	 * M3 badge (navigation-containment.md §16): `error` container, `on-error` label-small text.
-	 * Small: 6 × 6dp dot. Large: 16dp tall, min 16dp wide, 4dp horizontal padding, max 34dp ("999+").
+	 * Small: 6 × 6dp dot. Large: 16dp tall, min 16dp wide, 4dp horizontal padding; "999+" is 34dp wide.
 	 */
 	export const badgeVariants = tv({
 		base: "pointer-events-none inline-flex shrink-0 items-center justify-center rounded-m3-full bg-error text-on-error select-none",
 		variants: {
 			size: {
 				small: "size-1.5",
-				large: "type-label-sm h-4 min-w-4 max-w-[34px] px-1 tabular-nums whitespace-nowrap",
+				large: "type-label-sm h-4 min-w-4 px-1 tabular-nums whitespace-nowrap",
 			},
-			/** Placement when the badge wraps an anchor (icon). Offsets per Compose BadgedBox. */
+			/**
+			 * Placement when the badge wraps an anchor (icon), per Compose `BadgedBox`:
+			 * x = anchorWidth − offsetX, y = −badgeHeight + offsetY, with offsets 6 × 6dp (small)
+			 * and 12 × 14dp (large). (The "top: −14px" in the research note's implementation hint is
+			 * a misreading: 14dp is the vertical *overlap*, so a 16dp badge sits 2dp above the icon.)
+			 */
 			anchored: {
 				true: "absolute",
 				false: "",
@@ -90,8 +95,16 @@
 	let label = $derived(content ?? (count != null && count > 0 ? badgeLabel(count, max) : undefined));
 	let size = $derived<BadgeSize>(dot || label === undefined ? "small" : "large");
 	let hidden = $derived(invisible || (!dot && content == null && count != null && count <= 0));
-	// Screen-reader text (the visual label is aria-hidden): explicit aria-label, else the label.
-	let a11yLabel = $derived(ariaLabel ?? label);
+	/**
+	 * Screen-reader text (the visual label is aria-hidden): an explicit `aria-label`, else a summary
+	 * such as "3 new", "More than 999 new" or "New" (dot), so "999+" is never read as a number.
+	 */
+	let a11yLabel = $derived.by(() => {
+		if (ariaLabel) return ariaLabel;
+		if (content != null) return content;
+		if (count != null && count > 0) return count > max ? `More than ${max} new` : `${count} new`;
+		return "New";
+	});
 </script>
 
 {#snippet badgeContent()}
