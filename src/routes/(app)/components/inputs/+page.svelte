@@ -7,7 +7,8 @@
 		SearchBarAvatar,
 		SearchView,
 		SearchViewGroup,
-		SearchViewItem
+		SearchViewItem,
+		SearchViewSeparator
 	} from '#lib/components/ui/search-bar/index.js';
 	import * as Menu from '#lib/components/ui/menu/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
@@ -99,6 +100,17 @@
 	const minTrip = today(getLocalTimeZone());
 
 	const FRUITS = ['Apple', 'Banana', 'Blueberry', 'Cherry', 'Grapes', 'Mango', 'Pineapple', 'Strawberry'];
+	let pet = $state<string | undefined>(undefined);
+
+	// ------------------------------------------------------------------ states matrix
+	const TF_VARIANTS = ['filled', 'outlined'] as const;
+	const STATES: { name: string; value?: string; error?: boolean; disabled?: boolean; readonly?: boolean }[] = [
+		{ name: 'Enabled' },
+		{ name: 'Populated', value: 'Ada' },
+		{ name: 'Error', value: 'Ada', error: true },
+		{ name: 'Disabled', value: 'Ada', disabled: true },
+		{ name: 'Read-only', value: 'Ada', readonly: true }
+	];
 </script>
 
 <svelte:head>
@@ -107,7 +119,7 @@
 
 <Page
 	title="Inputs"
-	description="Text fields, search, menus and select, built to the Material 3 Expressive specs. Everything here is live: focus the fields, type, open the menus."
+	description="Text fields, search, menus, select and the date picker, built to the Material 3 Expressive specs. Everything here is live: focus the fields, type, open the menus."
 >
 	<!-- ============================================================ TEXT FIELDS -->
 	<Section
@@ -278,6 +290,37 @@
 		</div>
 
 		<Demo
+			label="States"
+			spec="Hover and focus are live · Error: label, indicator, supporting text and trailing icon in error · Disabled: content on-surface 38%, filled container on-surface 4%, outline on-surface 12%"
+			class="block"
+		>
+			<div class="overflow-x-auto">
+				<div class="grid min-w-max grid-cols-[auto_repeat(5,minmax(9.5rem,1fr))] items-start gap-x-3 gap-y-3">
+					<span></span>
+					{#each STATES as s (s.name)}
+						<span class="type-label-md px-1 text-on-surface-variant">{s.name}</span>
+					{/each}
+					{#each TF_VARIANTS as variant (variant)}
+						<span class="type-label-md self-center pe-2 text-on-surface-variant capitalize">{variant}</span>
+						{#each STATES as s (s.name)}
+							<TextField
+								{variant}
+								label="Name"
+								value={s.value ?? ''}
+								error={s.error}
+								errorText={s.error ? 'Error text' : undefined}
+								supportingText="Supporting text"
+								disabled={s.disabled}
+								readonly={s.readonly}
+								class="w-full"
+							/>
+						{/each}
+					{/each}
+				</div>
+			</div>
+		</Demo>
+
+		<Demo
 			label="A small form"
 			spec="Field.FieldSet / FieldGroup layout · error replaces supporting text · select = outlined field"
 			class="block"
@@ -315,11 +358,17 @@
 						</div>
 						<div class="grid gap-4 sm:grid-cols-2">
 							<TextField variant="outlined" label="City" bind:value={form.city} class="w-full" />
-							<Field.Field data-invalid={countryInvalid || undefined} class="gap-1">
-								<Field.FieldLabel class="sr-only" for="country-select">Country</Field.FieldLabel>
+							<Field.Field data-invalid={countryInvalid || undefined} class="gap-0">
 								<Select.Root type="single" bind:value={form.country}>
-									<Select.Trigger id="country-select" class="w-full" aria-invalid={countryInvalid || undefined}>
-										<span data-slot="select-value">{countryLabel ?? 'Country *'}</span>
+									<Select.Trigger
+										id="country-select"
+										label="Country"
+										required
+										class="w-full"
+										aria-invalid={countryInvalid || undefined}
+										aria-describedby={countryInvalid ? 'country-error' : undefined}
+									>
+										<span data-slot="select-value">{countryLabel ?? 'Choose one'}</span>
 									</Select.Trigger>
 									<Select.Content>
 										<Select.Group>
@@ -330,7 +379,7 @@
 									</Select.Content>
 								</Select.Root>
 								{#if countryInvalid}
-									<p class="type-body-sm px-4 text-error">Choose a country</p>
+									<p id="country-error" class="type-body-sm px-4 pt-1 text-error" aria-live="polite">Choose a country</p>
 								{/if}
 							</Field.Field>
 						</div>
@@ -397,7 +446,7 @@
 		<div class="grid gap-6 md:grid-cols-2">
 			<Demo
 				label="Search view · docked"
-				spec="Results corner 12dp · 2dp below the bar · Min 240dp, max 2/3 screen · Level 3 · List items 56/72dp"
+				spec="Results corner 12dp · 2dp below the bar · Min 240dp, max 2/3 screen · Level 3 · List items 56/72dp · ↑ ↓ Enter Esc"
 				class="min-h-80 flex-col items-stretch justify-start"
 			>
 				<SearchView
@@ -414,6 +463,7 @@
 							<SearchViewItem value={r} icon="history" trailingIcon="north_west" />
 						{/each}
 					</SearchViewGroup>
+					<SearchViewSeparator />
 					<SearchViewGroup heading="Components">
 						{#each SUGGESTIONS as s (s.value)}
 							<SearchViewItem value={s.value} icon={s.icon} supportingText={s.supporting} />
@@ -427,7 +477,7 @@
 
 			<Demo
 				label="Search view · full screen"
-				spec="Full-screen surface-container-low · 56dp bar, 12dp margins · Expand 600ms emphasized-decelerate · Collapse 350ms · Results fade 100ms after 50ms"
+				spec="Grows out of the bar (container transform) · surface-container-low · 56dp bar, 12dp margins · Expand 600ms emphasized-decelerate · Collapse 350ms · Results fade 100ms after 50ms · Used automatically below 600dp"
 				class="min-h-80 flex-col items-stretch justify-start"
 			>
 				<SearchView
@@ -607,8 +657,21 @@
 	>
 		<Demo
 			label="Select"
-			spec="Trigger 56dp, outline 1dp → 2dp primary · Arrow 24dp rotates on open · Menu items 48dp · Selected secondary-container"
+			spec="Trigger 56dp, outline 1dp → 2dp primary · Floating label + notch · Arrow 24dp rotates on open · Menu items 48dp · Selected secondary-container"
 		>
+			<Select.Root type="single" bind:value={pet}>
+				<Select.Trigger class="w-64" label="Favourite pet">
+					<span data-slot="select-value">{pet ?? 'Choose one'}</span>
+				</Select.Trigger>
+				<Select.Content>
+					<Select.Group>
+						{#each ['Cat', 'Dog', 'Rabbit', 'Parrot'] as p (p)}
+							<Select.Item value={p} label={p} />
+						{/each}
+					</Select.Group>
+				</Select.Content>
+			</Select.Root>
+
 			<Select.Root type="single" bind:value={fruit}>
 				<Select.Trigger class="w-64">
 					<span data-slot="select-value">{fruit || 'Pick a fruit'}</span>

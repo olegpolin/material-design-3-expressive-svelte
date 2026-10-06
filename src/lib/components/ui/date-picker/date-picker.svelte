@@ -50,7 +50,6 @@
 
 	const uid = $props.id();
 	let placeholder = $state<DateValue>(today(getLocalTimeZone()));
-	let labelWidth = $state(0);
 	let field = $state<HTMLElement | null>(null);
 	let content = $state<HTMLElement | null>(null);
 
@@ -144,7 +143,8 @@
 				style:--dp-ow={active && !disabled ? "2px" : "1px"}
 			>
 				<span class="dp-seg-start"></span>
-				<span class="dp-seg-notch" style:width="{labelWidth + 8}px"></span>
+				<!-- notch = label (body-small) + 4dp each side, sized by an invisible copy of the label -->
+				<span class="dp-seg-notch"><span class="type-body-sm invisible block h-0 px-1 whitespace-nowrap">{label}</span></span>
 				<span class="dp-seg-end"></span>
 			</span>
 			<DatePickerPrimitive.Label
@@ -153,7 +153,7 @@
 					labelColor
 				)}
 			>
-				<span bind:offsetWidth={labelWidth}>{label}</span>
+				{label}
 			</DatePickerPrimitive.Label>
 			<DatePickerPrimitive.Input
 				id="date-picker-{uid}"
@@ -307,20 +307,28 @@
 		transition: border-width var(--md-sys-motion-spring-fast-spatial-duration)
 			var(--md-sys-motion-spring-fast-spatial-easing);
 	}
+	/* Logical border sides so the outline mirrors in RTL. */
 	.dp-seg-start {
 		width: 12px;
 		flex-shrink: 0;
-		border-width: var(--dp-ow) 0 var(--dp-ow) var(--dp-ow);
+		border-width: 0;
+		border-block-width: var(--dp-ow);
+		border-inline-start-width: var(--dp-ow);
 		border-start-start-radius: var(--md-sys-shape-corner-extra-small);
 		border-end-start-radius: var(--md-sys-shape-corner-extra-small);
 	}
 	.dp-seg-notch {
 		flex-shrink: 0;
-		border-width: 0 0 var(--dp-ow) 0;
+		max-width: calc(100% - 24px);
+		overflow: hidden;
+		border-width: 0;
+		border-block-end-width: var(--dp-ow);
 	}
 	.dp-seg-end {
 		flex: 1 1 auto;
-		border-width: var(--dp-ow) var(--dp-ow) var(--dp-ow) 0;
+		border-width: 0;
+		border-block-width: var(--dp-ow);
+		border-inline-end-width: var(--dp-ow);
 		border-start-end-radius: var(--md-sys-shape-corner-extra-small);
 		border-end-end-radius: var(--md-sys-shape-corner-extra-small);
 	}

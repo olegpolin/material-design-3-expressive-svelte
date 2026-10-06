@@ -97,11 +97,12 @@
 	const supportingId = $derived(`${id}-supporting`);
 
 	let focused = $state(false);
-	let labelWidth = $state(0);
+	/** Browser autofill paints a value before any `input` event reaches `bind:value` (detected via `animationstart`). */
+	let autofilled = $state(false);
 
 	const outlined = $derived(variant === "outlined");
 	const length = $derived(value == null ? 0 : String(value).length);
-	const populated = $derived(length > 0 || ALWAYS_FLOATED.has(String(type)));
+	const populated = $derived(length > 0 || autofilled || ALWAYS_FLOATED.has(String(type)));
 	const floated = $derived(!!label && (focused || populated));
 	const hasLeading = $derived(!!(leading || leadingIcon));
 	const showErrorIcon = $derived(error && !trailing && !trailingIcon);
@@ -115,13 +116,12 @@
 	// resting label center = 28dp (container middle); floated label center = 16dp (filled: 8 top + 16/2)
 	// or 0 (outlined: on the outline). Scale 12/16 = 0.75 from the leading edge.
 	// Outlined + leading icon: the floated label moves to the 16dp start padding (12 + 24 + 16 → 16).
+	// `--tf-dir` is -1 in RTL so the inline shift mirrors.
 	const labelTranslate = $derived.by(() => {
 		if (!floated) return "0px 0px";
 		if (!outlined) return "0px -12px";
-		return `${hasLeading ? -36 : 0}px -28px`;
+		return hasLeading ? "calc(-36px * var(--tf-dir)) -28px" : "0px -28px";
 	});
-	/** Outline notch = floated label width + 4dp padding each side. */
-	const notchWidth = $derived(label ? labelWidth * 0.75 + 8 : 0);
 
 	// ---- state colors (§5.3 filled / §5.4 outlined) ------------------------------------------------
 	const labelColor = $derived(
@@ -180,6 +180,8 @@
 			error ? "caret-error" : "caret-m3-primary",
 			"placeholder:text-on-surface-variant placeholder:transition-opacity placeholder:duration-spring-fast-effects placeholder:ease-spring-fast-effects",
 			label && !focused && "placeholder:opacity-0",
+			// keep the field's own text color when the browser autofills it (see the autofill rules below)
+			"[-webkit-text-fill-color:currentColor]",
 			// filled + label: 8 top + 16 label line → input line starts at 24dp, 8dp bottom
 			!outlined && label ? "pt-6 pb-2" : "py-4",
 			multiline && "resize-none overflow-hidden",
@@ -207,11 +209,27 @@
 		ref?.focus();
 	}
 
-	/** Auto-grow: re-runs whenever `value` changes. */
+	function handleAnimationStart(e: AnimationEvent) {
+		if (e.animationName === "m3-tf-autofill-start") autofilled = true;
+		else if (e.animationName === "m3-tf-autofill-end") autofilled = false;
+	}
+
+	/** Auto-grow: re-runs whenever `value` changes, and re-fits when the width changes (re-wrapping). */
 	function autosize(el: HTMLTextAreaElement) {
 		void value;
-		el.style.height = "auto";
-		el.style.height = `${el.scrollHeight}px`;
+		const fit = () => {
+			el.style.height = "auto";
+			el.style.height = `${el.scrollHeight}px`;
+		};
+		fit();
+		let width = el.clientWidth;
+		const ro = new ResizeObserver(() => {
+			if (el.clientWidth === width) return;
+			width = el.clientWidth;
+			fit();
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
 	}
 </script>
 
@@ -243,7 +261,7 @@
 	data-populated={populated || undefined}
 	data-invalid={error || undefined}
 	data-disabled={disabled || undefined}
-	class={cn("inline-flex w-70 max-w-full min-w-0 flex-col text-start", className)}
+	class={cn("inline-flex w-70 max-w-full min-w-0 flex-col text-start [--tf-dir:1] rtl:[--tf-dir:-1]", className)}
 >
 	<!-- Pointer convenience only: the control itself is the keyboard target. -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -285,9 +303,12 @@
 			>
 				<span class="tf-outline-start"></span>
 				{#if label}
-					<span class="tf-outline-notch" style:width="{notchWidth}px">
-						<span class="tf-notch-top start-0 origin-left" data-open={floated || undefined}></span>
-						<span class="tf-notch-top end-0 origin-right" data-open={floated || undefined}></span>
+					<!-- Notch = floated label (12px; body-large tracking × 0.75) + 4dp each side. Sized by an invisible
+					     copy of the label, so it is right from the first (server-rendered) paint. -->
+					<span class="tf-outline-notch">
+						<span class="tf-notch-text">{label}{#if required}&nbsp;*{/if}</span>
+						<span class="tf-notch-top start-0 origin-left rtl:origin-right" data-open={floated || undefined}></span>
+						<span class="tf-notch-top end-0 origin-right rtl:origin-left" data-open={floated || undefined}></span>
 					</span>
 				{/if}
 				<span class="tf-outline-end"></span>
@@ -306,9 +327,8 @@
 			{#if label}
 				<label
 					for={id}
-					bind:offsetWidth={labelWidth}
 					class={cn(
-						"tf-label type-body-lg pointer-events-none absolute start-0 top-4 origin-[0_50%] whitespace-nowrap select-none",
+						"tf-label type-body-lg pointer-events-none absolute start-0 top-4 origin-[0_50%] whitespace-nowrap select-none rtl:origin-[100%_50%]",
 						labelColor
 					)}
 					style:translate={labelTranslate}
@@ -348,6 +368,7 @@
 					class={controlClass}
 					onfocus={handleFocus}
 					onblur={handleBlur}
+					onanimationstart={handleAnimationStart}
 					{@attach autosize}
 					{...restProps as HTMLTextareaAttributes}
 				></textarea>
@@ -368,6 +389,7 @@
 					class={controlClass}
 					onfocus={handleFocus}
 					onblur={handleBlur}
+					onanimationstart={handleAnimationStart}
 					{...restProps as HTMLInputAttributes}
 				/>
 			{/if}
@@ -437,10 +459,13 @@
 			var(--md-sys-motion-spring-fast-spatial-easing);
 	}
 	/* 12dp start segment: the floated label sits 4dp further in (16dp). */
+	/* Logical border sides so the outline and its notch mirror in RTL. */
 	.tf-outline-start {
 		width: 12px;
 		flex-shrink: 0;
-		border-width: var(--tf-ow) 0 var(--tf-ow) var(--tf-ow);
+		border-width: 0;
+		border-block-width: var(--tf-ow);
+		border-inline-start-width: var(--tf-ow);
 		border-start-start-radius: var(--md-sys-shape-corner-extra-small);
 		border-end-start-radius: var(--md-sys-shape-corner-extra-small);
 	}
@@ -448,26 +473,69 @@
 		position: relative;
 		flex-shrink: 0;
 		max-width: calc(100% - 24px);
-		border-width: 0 0 var(--tf-ow) 0;
+		overflow: hidden;
+		border-width: 0;
+		border-block-end-width: var(--tf-ow);
+	}
+	.tf-notch-text {
+		display: block;
+		visibility: hidden;
+		height: 0;
+		padding-inline: 4px;
+		font-family: var(--md-ref-typeface-plain);
+		font-size: 12px;
+		letter-spacing: 0.375px;
+		white-space: nowrap;
 	}
 	.tf-outline-end {
 		flex: 1 1 auto;
-		border-width: var(--tf-ow) var(--tf-ow) var(--tf-ow) 0;
+		border-width: 0;
+		border-block-width: var(--tf-ow);
+		border-inline-end-width: var(--tf-ow);
 		border-start-end-radius: var(--md-sys-shape-corner-extra-small);
 		border-end-end-radius: var(--md-sys-shape-corner-extra-small);
 	}
 	/* The notch's top edge is two halves that retract outward when the label floats. */
+	/* Drawn as a border (pixel-snapped like the other segments); the halves overlap by 1px so no seam shows. */
 	.tf-notch-top {
 		position: absolute;
 		top: 0;
-		width: 50%;
-		height: var(--tf-ow);
-		background-color: currentColor;
+		width: calc(50% + 0.5px);
+		height: 0;
+		border-top: var(--tf-ow) solid currentColor;
 		transition:
 			scale var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing),
-			height var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing);
+			border-width var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing);
 	}
 	.tf-notch-top[data-open] {
 		scale: 0 1;
+	}
+
+	/* Autofill: keep the M3 container (the UA background is !important; a transition that never starts
+	   outranks it in the cascade) and report the state to JS so the label floats over the filled value. */
+	:global([data-slot="text-field-input"]:autofill) {
+		transition:
+			background-color 0s 600000s,
+			color 0s 600000s;
+		animation: m3-tf-autofill-start 1ms;
+	}
+	:global([data-slot="text-field-input"]:-webkit-autofill) {
+		transition:
+			background-color 0s 600000s,
+			color 0s 600000s;
+		animation: m3-tf-autofill-start 1ms;
+	}
+	:global([data-slot="text-field-input"]:not(:autofill)) {
+		animation: m3-tf-autofill-end 1ms;
+	}
+	@keyframes -global-m3-tf-autofill-start {
+		from {
+			opacity: 1;
+		}
+	}
+	@keyframes -global-m3-tf-autofill-end {
+		from {
+			opacity: 1;
+		}
 	}
 </style>

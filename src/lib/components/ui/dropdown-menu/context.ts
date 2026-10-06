@@ -30,12 +30,14 @@ export function useMenuVariant(): MenuContext {
 export const menuContentVariants = tv({
 	base: [
 		"m3-menu-surface z-50 min-w-28 max-w-70 outline-none",
-		"origin-(--bits-dropdown-menu-content-transform-origin)",
+		// The floating-layer vars are shared by Content (--bits-dropdown-menu-*) and SubContent (--bits-menu-*),
+		// so sub-menus also scale from their trigger and respect the available height.
+		"origin-(--bits-floating-transform-origin)",
 	],
 	variants: {
 		variant: {
 			baseline:
-				"max-h-(--bits-dropdown-menu-content-available-height) overflow-x-hidden overflow-y-auto rounded-m3-xs bg-surface-container py-2 text-on-surface shadow-m3-2",
+				"max-h-(--bits-floating-available-height) overflow-x-hidden overflow-y-auto rounded-m3-xs bg-surface-container py-2 text-on-surface shadow-m3-2",
 			// A menu whose direct children are groups renders each group as its own surface with a 2dp gap.
 			expressive: [
 				"flex flex-col rounded-m3-lg bg-surface-container-low p-1 text-on-surface shadow-m3-2",
@@ -88,6 +90,8 @@ export const menuItemVariants = tv({
 		"focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-m3-secondary",
 		"data-disabled:pointer-events-none data-disabled:opacity-(--md-sys-state-disabled-content-opacity)",
 		"[&_[data-slot=icon]]:pointer-events-none",
+		// selection: shape morphs on FastSpatial, color on FastEffects (inputs-selection.md §8.2)
+		"[transition:border-radius_var(--md-sys-motion-spring-fast-spatial-duration)_var(--md-sys-motion-spring-fast-spatial-easing),background-color_var(--md-sys-motion-spring-fast-effects-duration)_var(--md-sys-motion-spring-fast-effects-easing),color_var(--md-sys-motion-spring-fast-effects-duration)_var(--md-sys-motion-spring-fast-effects-easing)]",
 	],
 	variants: {
 		variant: {

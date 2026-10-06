@@ -27,6 +27,48 @@
 		children?: Snippet;
 		class?: string;
 	};
+
+	/** Compose `SearchBar` motion (inputs-selection.md §7.2): expand 600ms emphasized-decelerate, collapse 350ms. */
+	const ENTER_MS = 600;
+	const EXIT_MS = 350;
+	const ENTER_EASING = "cubic-bezier(0.05, 0.7, 0.1, 1)";
+	const EXIT_EASING = "cubic-bezier(0, 1, 0, 1)";
+
+	/** Solves a CSS cubic-bezier for Svelte transitions (which need a JS easing function). */
+	function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
+		const bez = (t: number, a: number, b: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3;
+		return (x: number) => {
+			if (x <= 0 || x >= 1) return x;
+			let lo = 0;
+			let hi = 1;
+			let t = x;
+			for (let i = 0; i < 24; i++) {
+				const cx = bez(t, x1, x2);
+				if (Math.abs(cx - x) < 1e-5) break;
+				if (cx < x) lo = t;
+				else hi = t;
+				t = (lo + hi) / 2;
+			}
+			return bez(t, y1, y2);
+		};
+	}
+	const enterEase = cubicBezier(0.05, 0.7, 0.1, 1);
+	const exitEase = cubicBezier(0, 1, 0, 1);
+
+	function reducedMotion() {
+		return typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+	}
+
+	/** Docked results: expand / shrink vertically from under the bar + fade (Compose DockedSearchBar). */
+	function reveal(_node: Element, { exit = false }: { exit?: boolean } = {}) {
+		return {
+			duration: reducedMotion() ? 0 : exit ? EXIT_MS : ENTER_MS,
+			easing: exit ? exitEase : enterEase,
+			// Negative side/top insets keep the level-3 shadow visible while the bottom edge moves.
+			css: (t: number) =>
+				`clip-path: inset(-16px -16px calc(${(1 - t) * 100}% - ${16 * t}px) -16px); opacity: ${t};`,
+		};
+	}
 </script>
 
 <script lang="ts">
@@ -63,13 +105,16 @@
 
 	let root = $state<HTMLElement | null>(null);
 	let input = $state<HTMLInputElement | null>(null);
+	/** Collapsed bar (full-screen mode) and the full-screen surface, for the container transform. */
+	let collapsedBar = $state<HTMLElement | null>(null);
+	let fullscreenSurface = $state<HTMLElement | null>(null);
 	/** Highlighted suggestion (bits-ui Command value). */
 	let highlighted = $state("");
 
 	function submit(query: string) {
 		value = query;
 		open = false;
-		if (!fullscreen) input?.blur();
+		// Docked: focus stays in the input (keyboard users keep their place); typing reopens the results.
 		onsubmit?.(query);
 	}
 
@@ -82,7 +127,7 @@
 		} else if (e.key === "Enter" && (!open || !highlighted)) {
 			e.preventDefault();
 			submit(value);
-		} else if (!open && !fullscreen && e.key.length === 1) {
+		} else if (!open && !fullscreen && (e.key.length === 1 || e.key === "ArrowDown" || e.key === "ArrowUp")) {
 			open = true;
 		}
 	}
@@ -101,6 +146,35 @@
 		value = "";
 		input?.focus();
 	}
+
+	/**
+	 * Full-screen container transform: the view grows out of the collapsed bar (clipped to the bar's rect,
+	 * slid down to the bar's position) and collapses back into it. Started from an effect, so the exit
+	 * animation exists before bits-ui's presence check reads `getAnimations()` and is awaited.
+	 */
+	function barKeyframe(surface: HTMLElement): Keyframe | null {
+		const bar = collapsedBar?.getBoundingClientRect();
+		if (!bar || bar.width === 0) return null;
+		const vw = surface.clientWidth || innerWidth;
+		const vh = surface.clientHeight || innerHeight;
+		// The expanded bar sits 12dp from the top; slide the view so it lines up with the collapsed bar.
+		return {
+			clipPath: `inset(12px ${vw - bar.right}px ${Math.max(0, vh - 12 - bar.height)}px ${bar.left}px round ${bar.height / 2}px)`,
+			translate: `0 ${bar.top - 12}px`,
+		};
+	}
+	let fullscreenAnimation: Animation | null = null;
+	$effect(() => {
+		const surface = fullscreenSurface;
+		if (!surface || !fullscreen) return;
+		const from = barKeyframe(surface);
+		const to: Keyframe = { clipPath: "inset(0px 0px 0px 0px round 0px)", translate: "0 0" };
+		fullscreenAnimation?.cancel();
+		if (!from || reducedMotion()) return;
+		fullscreenAnimation = open
+			? surface.animate([from, to], { duration: ENTER_MS, easing: ENTER_EASING })
+			: surface.animate([to, from], { duration: EXIT_MS, easing: EXIT_EASING, fill: "forwards" });
+	});
 
 	const barClass =
 		"group/search-bar relative flex h-14 w-full items-center gap-1 rounded-m3-full bg-surface-container-high ps-1 pe-1 text-on-surface";
@@ -130,7 +204,7 @@
 {#if fullscreen}
 	<!-- Collapsed bar: opens the full-screen view. -->
 	<div data-slot="search-view" class={cn("w-full", className)}>
-		<div class={cn(barClass, "mx-auto max-w-180 shadow-m3-3")}>
+		<div bind:this={collapsedBar} class={cn(barClass, "mx-auto max-w-180 shadow-m3-3")}>
 			<span aria-hidden="true" class={hoverLayer}></span>
 			{#if onleadingclick}
 				<SearchBarAction
@@ -162,12 +236,9 @@
 	<DialogPrimitive.Root bind:open>
 		<DialogPrimitive.Portal>
 			<DialogPrimitive.Content
+				bind:ref={fullscreenSurface}
 				data-slot="search-view-fullscreen"
-				class={cn(
-					"fixed inset-0 z-50 flex flex-col bg-surface-container-low text-on-surface outline-none",
-					"origin-top data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:duration-m3-long4 data-open:ease-m3-emphasized-decelerate",
-					"data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:duration-m3-medium3 data-closed:ease-[cubic-bezier(0,1,0,1)]"
-				)}
+				class="fixed inset-0 z-50 flex flex-col bg-surface-container-low text-on-surface outline-none"
 				onOpenAutoFocus={(e) => {
 					e.preventDefault();
 					input?.focus();
@@ -255,10 +326,9 @@
 		{#if open}
 			<div
 				data-slot="search-view-docked"
-				class={cn(
-					"absolute inset-x-0 top-full z-50 mt-0.5 flex max-h-[min(66vh,560px)] min-h-60 flex-col overflow-hidden rounded-m3-md bg-surface-container-high shadow-m3-3",
-					"origin-top animate-in fade-in-0 slide-in-from-top-2 duration-m3-long4 ease-m3-emphasized-decelerate"
-				)}
+				class="absolute inset-x-0 top-full z-50 mt-0.5 flex max-h-[min(66vh,560px)] min-h-60 flex-col overflow-hidden rounded-m3-md bg-surface-container-high shadow-m3-3"
+				in:reveal
+				out:reveal={{ exit: true }}
 			>
 				<div class="search-view-fade flex min-h-0 flex-1 flex-col">
 					{@render results()}
