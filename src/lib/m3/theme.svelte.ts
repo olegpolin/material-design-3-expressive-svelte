@@ -56,7 +56,25 @@ interface PersistedTheme {
 	contrast: number;
 	specVersion: SpecVersion;
 	motionScheme: MotionScheme;
+	/** The generated schemes for exactly this configuration, so a reload can paint them before MCU loads. */
+	light?: ColorMap;
+	dark?: ColorMap;
 }
+
+/** Identity of a color configuration (what the cached schemes were generated for). */
+const configKey = (seed: string, variant: SchemeVariant, contrast: number, spec: SpecVersion) =>
+	`${seed.trim().toLowerCase()}|${variant}|${contrast}|${spec}`;
+
+const isColorMap = (v: unknown): v is ColorMap =>
+	!!v && typeof v === 'object' && COLOR_ROLES.every((r) => /^#[0-9a-f]{6}$/i.test(String((v as ColorMap)[r])));
+
+/**
+ * Inline `<head>` script (rendered by the root layout) that applies the saved theme before the first
+ * paint: the cached `--md-sys-color-*` values for the saved light / dark mode (mode-watcher's storage
+ * key and the system preference decide which) and `data-motion-scheme`. Without it a custom seed would
+ * flash the baseline until hydration + MCU. Plain ES5, no dependencies; failures are ignored.
+ */
+export const THEME_BOOT_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.getItem('${STORAGE_KEY}')||'null');if(!s)return;var r=document.documentElement;if(s.motionScheme==='standard'||s.motionScheme==='expressive')r.setAttribute('data-motion-scheme',s.motionScheme);var m=localStorage.getItem('mode-watcher-mode');var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);var c=d?s.dark:s.light;if(!c)return;for(var k in c){if(/^[a-z-]+$/.test(k)&&/^#[0-9a-f]{6}$/i.test(c[k]))r.style.setProperty('--md-sys-color-'+k,c[k]);}}catch(e){}})();`;
 
 function schemeClass(mcu: MCU, variant: SchemeVariant) {
 	switch (variant) {
@@ -113,6 +131,8 @@ export class ThemeState {
 	motionScheme = $state<MotionScheme>('expressive');
 
 	#mcu = $state.raw<MCU | null>(null);
+	/** Schemes restored from localStorage for the saved configuration (used until MCU has loaded). */
+	#cached = $state.raw<{ key: string; light: ColorMap; dark: ColorMap } | null>(null);
 
 	/** Mirrors mode-watcher's `mode`; assigning calls `setMode`. */
 	get dark() {
@@ -152,7 +172,12 @@ export class ThemeState {
 		if (this.isBaseline) return isDark ? BASELINE_DARK : BASELINE_LIGHT;
 		const mcu = this.#mcu;
 		const seed = this.seed.trim();
-		if (!mcu || !HEX_RE.test(seed)) return null;
+		if (!HEX_RE.test(seed)) return null;
+		if (!mcu) {
+			const cached = this.#cached;
+			const key = configKey(seed, this.variant, this.contrast, this.specVersion);
+			return cached?.key === key ? (isDark ? cached.dark : cached.light) : null;
+		}
 		return buildColorMap(mcu, seed.startsWith('#') ? seed : `#${seed}`, isDark, this.variant, this.contrast, this.specVersion);
 	}
 
@@ -220,6 +245,10 @@ export class ThemeState {
 			if (saved.specVersion === '2021' || saved.specVersion === '2025') this.specVersion = saved.specVersion;
 			if (saved.motionScheme === 'expressive' || saved.motionScheme === 'standard')
 				this.motionScheme = saved.motionScheme;
+			if (isColorMap(saved.light) && isColorMap(saved.dark)) {
+				const key = configKey(this.seed, this.variant, this.contrast, this.specVersion);
+				this.#cached = { key, light: saved.light, dark: saved.dark };
+			}
 		} catch {
 			// ignore corrupt or blocked storage
 		}
@@ -234,6 +263,12 @@ export class ThemeState {
 			specVersion: this.specVersion,
 			motionScheme: this.motionScheme
 		};
+		if (!this.isBaseline) {
+			// Cache the generated schemes (both modes) so the next load paints them immediately.
+			const light = this.lightColors;
+			const dark = this.darkColors;
+			if (light && dark) Object.assign(data, { light, dark });
+		}
 		if (typeof localStorage === 'undefined') return;
 		try {
 			if (this.isBaseline && this.motionScheme === 'expressive') localStorage.removeItem(STORAGE_KEY);
@@ -246,7 +281,10 @@ export class ThemeState {
 
 const [getThemeContext, setThemeContext] = createContext<ThemeState>();
 
-/** Create the ThemeState and provide it via context (call once, in the root layout). */
+/**
+ * Create the ThemeState and provide it via context. Call once, synchronously at the top level of the
+ * root layout's `<script>` (context can only be set during component initialisation).
+ */
 export function createTheme() {
 	return setThemeContext(new ThemeState());
 }

@@ -8,8 +8,10 @@
  * Port of material-web `md-ripple` behaviour (docs/research/motion.md §4.2) with current m3 opacities
  * (hover 8%, focus 10%, pressed 10%; color.md §3.1). The overlay is a `<span data-m3-ripple>` styled in
  * src/routes/layout.css: absolutely positioned, `inset: 0`, `border-radius: inherit`, `overflow: hidden`,
- * `pointer-events: none`, painted in `currentColor` (or `options.color`). A static host gets
- * `position: relative` for the attachment's lifetime.
+ * `pointer-events: none`, painted in `currentColor` (or `options.color`). The host is marked
+ * `data-m3-ripple-host`; a base-layer rule in layout.css makes it `position: relative` unless any
+ * utility / component style positions it (so an `absolute` / `fixed` / `sticky` host keeps its
+ * position, even if that class is toggled after the attachment ran).
  */
 import type { Attachment } from 'svelte/attachments';
 
@@ -69,14 +71,18 @@ function create(withRipple: boolean, options: RippleOptions): Attachment<HTMLEle
 		if (options.color) layer.style.setProperty('--m3-ripple-color', options.color);
 		host.prepend(layer);
 
-		const restorePosition = getComputedStyle(host).position === 'static';
-		if (restorePosition) host.style.position = 'relative';
+		// Static hosts become `position: relative` through `[data-m3-ripple-host]` in layout.css
+		// (@layer base, so any positioning utility on the host still wins). Count nested attachments
+		// on the same host so removing one doesn't drop the marker the other still needs.
+		const hostCount = Number(host.dataset.m3RippleHost || 0) + 1;
+		host.dataset.m3RippleHost = String(hostCount);
 
 		let state: State = State.Inactive;
 		let startEvent: PointerEvent | null = null;
 		let grow: Animation | null = null;
 		let pressedAt = 0;
 		let endTimer: ReturnType<typeof setTimeout> | undefined;
+		let touchTimer: ReturnType<typeof setTimeout> | undefined;
 		let ignoreNextKeyClick = false;
 
 		const isDisabled = () => !!options.disabled || host.matches(DISABLED_SELECTOR);
@@ -140,6 +146,7 @@ function create(withRipple: boolean, options: RippleOptions): Attachment<HTMLEle
 			state = State.Inactive;
 			startEvent = null;
 			clearTimeout(endTimer);
+			clearTimeout(touchTimer);
 			setFlag('hovered', false);
 			setFlag('focused', false);
 			setFlag('pressed', false);
@@ -168,7 +175,8 @@ function create(withRipple: boolean, options: RippleOptions): Attachment<HTMLEle
 				return;
 			}
 			state = State.TouchDelay;
-			setTimeout(() => {
+			clearTimeout(touchTimer);
+			touchTimer = setTimeout(() => {
 				if (state !== State.TouchDelay) return;
 				state = State.Holding;
 				startPress(e);
@@ -272,9 +280,12 @@ function create(withRipple: boolean, options: RippleOptions): Attachment<HTMLEle
 			for (const [type, fn] of listeners) host.removeEventListener(type, fn);
 			observer.disconnect();
 			clearTimeout(endTimer);
+			clearTimeout(touchTimer);
 			grow?.cancel();
 			layer.remove();
-			if (restorePosition) host.style.position = '';
+			const left = Number(host.dataset.m3RippleHost || 1) - 1;
+			if (left > 0) host.dataset.m3RippleHost = String(left);
+			else delete host.dataset.m3RippleHost;
 		};
 	};
 }

@@ -199,11 +199,15 @@
 
 <svelte:head>
 	<title>Styles · M3 Expressive</title>
+	<meta
+		name="description"
+		content="The M3 Expressive foundation: 49 color roles, the baseline and emphasized type scale, corner radii, the 35-shape library, motion springs, elevation and state layers."
+	/>
 </svelte:head>
 
-{#snippet sectionTitle(title: string, subtitle: string)}
+{#snippet sectionTitle(id: string, title: string, subtitle: string)}
 	<header class="mb-6 flex flex-col gap-1">
-		<h2 class="type-headline-md text-on-surface">{title}</h2>
+		<h2 {id} class="scroll-mt-6 type-headline-md text-on-surface">{title}</h2>
 		<p class="type-body-md text-on-surface-variant">{subtitle}</p>
 	</header>
 {/snippet}
@@ -266,8 +270,9 @@
 
 	<!-- (a) color roles -->
 	<section aria-labelledby="colors">
-		<div id="colors">
+		<div>
 			{@render sectionTitle(
+				'colors',
 				'Color roles',
 				`All 49 md.sys.color roles for the active ${theme.dark ? 'dark' : 'light'} scheme. Utility: bg-<role> / text-<role> (collisions: m3-primary, m3-secondary, m3-background).`
 			)}
@@ -296,8 +301,9 @@
 
 	<!-- (c) type scale -->
 	<section aria-labelledby="type">
-		<div id="type">
+		<div>
 			{@render sectionTitle(
+				'type',
 				'Type scale',
 				'Baseline and emphasized styles. type-* sets family + size + line height + tracking + weight; text-* sets everything but the family. Brand = Google Sans Flex, plain = Roboto Flex; emphasized adds ROND 100.'
 			)}
@@ -337,8 +343,8 @@
 
 	<!-- shape corners -->
 	<section aria-labelledby="corners">
-		<div id="corners">
-			{@render sectionTitle('Corner radius', 'rounded-m3-* — the 10-step M3 Expressive corner scale.')}
+		<div>
+			{@render sectionTitle('corners', 'Corner radius', 'rounded-m3-* — the 10-step M3 Expressive corner scale.')}
 		</div>
 		<ul class="grid grid-cols-2 gap-4 sm:grid-cols-5">
 			{#each corners as c (c.name)}
@@ -353,8 +359,9 @@
 
 	<!-- (d) shapes -->
 	<section aria-labelledby="shapes">
-		<div id="shapes">
+		<div>
 			{@render sectionTitle(
+				'shapes',
 				'Shape library',
 				'The 35 M3 Expressive shapes (RoundedPolygon port of androidx.graphics.shapes). Tap the first tile to morph with a fast-spatial spring.'
 			)}
@@ -412,8 +419,9 @@
 
 	<!-- (e) motion -->
 	<section aria-labelledby="motion">
-		<div id="motion">
+		<div>
 			{@render sectionTitle(
+				'motion',
 				'Motion',
 				`Springs for the ${theme.motionScheme} scheme as CSS linear() easings (ease-spring-* duration-spring-*), plus legacy easing tokens (ease-m3-* duration-m3-*). Spatial springs overshoot; effects springs never do.`
 			)}
@@ -432,7 +440,7 @@
 		{#snippet motionRow(row: MotionRow)}
 			<button
 				type="button"
-				class="grid w-full grid-cols-[8.5rem_1fr] items-center gap-3 rounded-m3-md px-2 py-2 text-left sm:grid-cols-[12rem_1fr]"
+				class="grid w-full grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-3 rounded-m3-md px-2 py-2 text-start sm:grid-cols-[12rem_minmax(0,1fr)]"
 				onclick={() => (moved[row.label] = !moved[row.label])}
 				{@attach stateLayer()}
 			>
@@ -440,12 +448,15 @@
 					<span class="type-label-lg text-on-surface">{row.label}</span>
 					<span class="type-body-sm text-on-surface-variant">{row.note}</span>
 				</span>
-				<span class="relative h-12 w-[248px] max-w-full rounded-m3-full bg-surface-container-highest">
+				<!-- the track is a size container, so the ball travels its full width at any window size -->
+				<span
+					class="relative h-12 w-full max-w-[248px] rounded-m3-full bg-surface-container-highest [container-type:inline-size]"
+				>
 					<span
 						class={[
-							'absolute top-0 left-0 size-12 rounded-m3-full bg-m3-primary transition-transform',
+							'absolute start-0 top-0 size-12 rounded-m3-full bg-m3-primary transition-transform',
 							row.cls,
-							moved[row.label] && 'translate-x-[200px]'
+							moved[row.label] && 'translate-x-[calc(100cqw-3rem)] rtl:-translate-x-[calc(100cqw-3rem)]'
 						]}
 					></span>
 				</span>
@@ -466,8 +477,9 @@
 
 	<!-- (f) elevation -->
 	<section aria-labelledby="elevation">
-		<div id="elevation">
+		<div>
 			{@render sectionTitle(
+				'elevation',
 				'Elevation',
 				'shadow-m3-0 … shadow-m3-5 (key 30% + ambient 15% shadows). Prefer tonal surface-container roles for separation; levels 4–5 are for hover/drag only.'
 			)}
@@ -485,8 +497,9 @@
 
 	<!-- (g) ripple -->
 	<section aria-labelledby="ripple">
-		<div id="ripple">
+		<div>
 			{@render sectionTitle(
+				'ripple',
 				'State layers & ripple',
 				'{@attach ripple()} — hover 8%, focus-visible 10%, pressed 10% of the content color, ripple grows from the pointer (450ms, min press 225ms). Keyboard: Tab to focus, Space/Enter to press.'
 			)}

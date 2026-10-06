@@ -89,10 +89,9 @@
 		text-wrap: balance;
 	}
 
-	/* Negative grade offsets the heavier look of light-on-dark text. */
+	/* Light-on-dark text looks heavier; the editorial guidance offsets it with a negative grade, but
+	   Google Sans Flex's GRAD axis only goes 0..100, so trim the weight a little instead (500 → 460). */
 	:global(.dark) .hero-title {
-		font-variation-settings:
-			'ROND' 100,
-			'GRAD' -25;
+		font-weight: 460;
 	}
 </style>

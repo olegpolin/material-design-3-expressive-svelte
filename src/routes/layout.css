@@ -1031,6 +1031,19 @@
 	body {
 		@apply bg-surface text-on-surface;
 	}
+	/* Native controls, scrollbars and form widgets follow the active scheme (mode-watcher also sets
+	   it inline on <html>; this covers nested .dark subtrees and the pre-hydration paint). */
+	:root {
+		color-scheme: light;
+	}
+	.dark {
+		color-scheme: dark;
+	}
+	/* Host of `ripple()` / `stateLayer()`: static hosts become the overlay's containing block. Kept in
+	   the base layer so any positioning utility (absolute, fixed, sticky …) on the host still wins. */
+	[data-m3-ripple-host] {
+		position: relative;
+	}
 	/* M3 focus indicator (color.md §3.3): 3px secondary outline, 2px outward offset.
 	   Components may override (e.g. outline-none + their own ring). */
 	:focus-visible {

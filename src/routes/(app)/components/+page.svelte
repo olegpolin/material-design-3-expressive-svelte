@@ -100,6 +100,10 @@
 
 <svelte:head>
 	<title>Components · M3 Expressive</title>
+	<meta
+		name="description"
+		content="Every Material 3 Expressive component in Svelte 5: actions, selection, inputs, navigation, containment and communication, plus the styles foundation."
+	/>
 </svelte:head>
 
 {#snippet tile(g: Group, featured = false)}

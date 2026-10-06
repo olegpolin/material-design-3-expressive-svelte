@@ -76,6 +76,8 @@ The focus indicator is global: `:focus-visible { outline: 3px solid var(--md-sys
 The **brand** typeface (`--md-ref-typeface-brand`) is Google Sans Flex. It is used for display, headline and title-large.
 The **plain** typeface (`--md-ref-typeface-plain`) is Roboto Flex. It is used for title-medium/small, body and label.
 Both fonts are loaded with every axis (`full.css`), so `font-stretch`, `font-optical-sizing`, and `font-variation-settings: 'GRAD' …, 'ROND' …` all work.
+`full.css` is the only fontsource file that has GRAD + ROND together with wght/wdth/opsz (the per-axis files carry wght plus one axis), and `unicode-range` means a Latin page downloads one file per family (Roboto Flex ≈ 320 KB, Google Sans Flex ≈ 1.4 MB). The root layout preloads those two Latin files.
+Axis ranges differ: Google Sans Flex `GRAD` is 0…100 (no negative grade; lower `font-weight` slightly instead for light-on-dark), Roboto Flex `GRAD` is -200…150.
 
 | Class | What it sets |
 |---|---|
@@ -201,6 +203,7 @@ Rules:
 - Fast is for small components, default for partial-screen motion, slow for full-screen motion.
 - Button, icon button and split button press morphs use **default-effects** (no bounce).
 - Toggle-button shape changes and the button-group squeeze use **fast-spatial**.
+- Page changes in the `(app)` shell use the M3 fade-through (MaterialFadeThrough: 450ms `long1` on the emphasized curve, old page out by 35% of the eased progress, new page fades in and scales 0.92 → 1), via the View Transitions API + WAAPI. It is skipped in hidden documents; reduced motion keeps the cross-fade only.
 
 The `ease-spring-*` and `duration-spring-*` values follow the **motion scheme**:
 - The default is expressive.
@@ -262,8 +265,8 @@ The CSS easings don't preserve velocity when interrupted. Use `animateSpring` (o
 | `RIPPLE_TIMING` | The material-web constants |
 
 Behavior:
-- The attachment prepends `<span data-m3-ripple aria-hidden>`, which has `absolute inset-0 overflow-hidden pointer-events-none` and `border-radius: inherit`. The host only needs its final `rounded-*`.
-- A host with `position: static` gets `position: relative`.
+- The attachment prepends `<span data-m3-ripple aria-hidden>`, which has `absolute inset-0 overflow-hidden pointer-events-none` and `border-radius: inherit`. The host only needs its final `rounded-*` (radius animations are followed, because the overlay inherits the radius every frame).
+- The host gets `data-m3-ripple-host`; a `@layer base` rule makes it `position: relative`. Any positioning utility or component style on the host (`absolute`, `fixed`, `sticky` …) still wins, even if it is toggled later.
 - The layer is hidden while the host matches `[disabled]`, `[aria-disabled=true]`, or `[data-disabled]` (unless `data-disabled="false"`).
 - Under `prefers-reduced-motion`, the ripple shows at full size immediately with no grow.
 - The overlay paints over non-positioned content at low opacity. If a child must sit above it, give that child `relative`.
@@ -298,11 +301,14 @@ theme.reset();                    // back to the static baseline (removes inline
 | `cssVars` | The active mode's `{ '--md-sys-color-…': hex }` |
 | `apply()` | Writes the vars and `data-motion-scheme` to `<html>`. The effect in `start()` calls it automatically. |
 | `toCss()` | Stylesheet text with both schemes (`:root` / `.dark`) |
-| `start()` | Creates the effects and restores the saved configuration from `localStorage` (`m3-theme`); every later change is saved. Call only during component init. |
-| `createTheme()` / `getTheme()` | `createContext` pair |
+| `start()` | Creates the effects and restores the saved configuration from `localStorage` (`m3-theme`); every later change is saved, together with the generated light + dark maps for that configuration. Until MCU has loaded, the cached maps are used, so a reload or a dark toggle never falls back to the baseline. Call only during component init. |
+| `THEME_BOOT_SCRIPT` | Inline script string the root layout renders in `<head>`: applies the cached `--md-sys-color-*` for the saved mode (mode-watcher's `mode-watcher-mode` key, else the system preference) and `data-motion-scheme` before the first paint. |
+| `createTheme()` / `getTheme()` | `createContext` pair. `createTheme()` must run synchronously at the top level of the root layout's `<script>` |
 | `SCHEME_VARIANTS`, `DEFAULT_SEED`, `buildColorMap(mcu, seed, isDark, variant?, contrast?, spec?)`, `type SchemeVariant`, `type SpecVersion` | |
 
 `#lib/m3/color-roles.js` exports `COLOR_ROLES` (the 49 kebab-case roles), `type ColorRole`, `type ColorMap`, `cssVar(role)`, `roleToCamel(role)`, `BASELINE_LIGHT`, and `BASELINE_DARK`.
+
+`:root` / `.dark` also set `color-scheme`, so native controls and scrollbars match the mode.
 
 **SSR note:** `@material/material-color-utilities@0.4.0` is never imported statically. ThemeState loads it with `import()` inside an effect, and `vite.config.ts` also sets `ssr.noExternal` for it. Keep it that way.
 
