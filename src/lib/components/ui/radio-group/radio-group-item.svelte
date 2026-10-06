@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { RadioGroup as RadioGroupPrimitive } from "bits-ui";
-	import CircleIcon from '@lucide/svelte/icons/circle';
+	import { ripple } from "#lib/m3/ripple.svelte.js";
 	import { cn, type WithoutChildrenOrChild } from "#lib/utils.js";
 
+	/**
+	 * M3 radio button (docs/research/inputs-selection.md §2).
+	 * 20dp ring · 2dp stroke · 10dp dot (grows on the fast-spatial spring) · 40dp state layer · 48dp target.
+	 */
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -10,20 +14,96 @@
 	}: WithoutChildrenOrChild<RadioGroupPrimitive.ItemProps> = $props();
 </script>
 
-<RadioGroupPrimitive.Item
-	bind:ref
-	data-slot="radio-group-item"
-	class={cn(
-		"border-input dark:bg-input/30 data-checked:bg-primary data-checked:text-primary-foreground dark:data-checked:bg-primary data-checked:border-primary aria-invalid:aria-checked:border-primary aria-invalid:border-destructive focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 dark:aria-invalid:border-destructive/50 flex size-4 rounded-full focus-visible:ring-3 aria-invalid:ring-3 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input group-has-[:focus-visible]/field-label:data-checked:border-primary group/radio-group-item peer relative aspect-square shrink-0 border outline-none after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50",
-		className
-	)}
-	{...restProps}
->
-	{#snippet children({ checked })}
-		<div data-slot="radio-group-indicator" class="flex size-4 items-center justify-center">
-			{#if checked}
-				<CircleIcon class="bg-primary-foreground absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-			{/if}
-		</div>
+<RadioGroupPrimitive.Item bind:ref {...restProps}>
+	{#snippet child({ props })}
+		<button
+			{...props}
+			data-slot="radio-group-item"
+			class={cn("m3-radio peer", className)}
+			{@attach ripple({ centered: true })}
+		>
+			<svg viewBox="0 0 20 20" class="icon" aria-hidden="true">
+				<circle class="ring" cx="10" cy="10" r="9" />
+				<circle class="dot" cx="10" cy="10" r="5" />
+			</svg>
+		</button>
 	{/snippet}
 </RadioGroupPrimitive.Item>
+
+<style>
+	.m3-radio {
+		--_icon: var(--md-sys-color-on-surface-variant);
+		color: var(--md-sys-color-on-surface); /* state layer (ripple uses currentColor) */
+
+		position: relative;
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		border-radius: var(--md-sys-shape-corner-full);
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		user-select: none;
+	}
+	/* 48dp touch target */
+	.m3-radio::after {
+		content: "";
+		position: absolute;
+		inset: -4px;
+		border-radius: inherit;
+	}
+	.m3-radio:is(:hover, :focus-visible, :active) {
+		--_icon: var(--md-sys-color-on-surface);
+	}
+	/* Pressed layer previews the next state: unselected → primary, selected → on-surface */
+	.m3-radio:active {
+		color: var(--md-sys-color-primary);
+	}
+	.m3-radio[data-state="checked"] {
+		--_icon: var(--md-sys-color-primary);
+		color: var(--md-sys-color-primary);
+	}
+	.m3-radio[data-state="checked"]:active {
+		color: var(--md-sys-color-on-surface);
+	}
+	.m3-radio:is(:disabled, [data-disabled]) {
+		--_icon: color-mix(
+			in srgb,
+			var(--md-sys-color-on-surface) calc(var(--md-sys-state-disabled-content-opacity) * 100%),
+			transparent
+		);
+		cursor: default;
+	}
+
+	.icon {
+		width: 20px;
+		height: 20px;
+		overflow: visible;
+	}
+	.ring {
+		fill: none;
+		stroke: var(--_icon);
+		stroke-width: 2px;
+		transition: stroke var(--md-sys-motion-spring-default-effects-duration)
+			var(--md-sys-motion-spring-default-effects-easing);
+	}
+	.dot {
+		fill: var(--_icon);
+		transform-box: fill-box;
+		transform-origin: center;
+		scale: 0;
+		transition:
+			scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing),
+			fill var(--md-sys-motion-spring-default-effects-duration)
+				var(--md-sys-motion-spring-default-effects-easing);
+	}
+	.m3-radio[data-state="checked"] .dot {
+		scale: 1;
+	}
+	/* Disabled snaps (Compose) */
+	.m3-radio:is(:disabled, [data-disabled]) :is(.ring, .dot) {
+		transition: none;
+	}
+</style>

@@ -1,34 +1,205 @@
 <script lang="ts">
 	import { Switch as SwitchPrimitive } from "bits-ui";
+	import { Icon } from "#lib/components/ui/icon/index.js";
+	import { ripple } from "#lib/m3/ripple.svelte.js";
 	import { cn, type WithoutChildrenOrChild } from "#lib/utils.js";
 
+	/**
+	 * M3 switch (docs/research/inputs-selection.md §3).
+	 * Track 52×32dp, 2dp outline when unselected. Handle 16dp unselected / 24dp selected or with icon /
+	 * 28dp pressed, centered at x = 16 or 36dp. While pressed the handle snaps to 28dp; on release size
+	 * and position spring back with fast-spatial (ζ 0.6, k 800). 16dp icons, 40dp state layer on the handle.
+	 */
 	let {
 		ref = $bindable(null),
 		class: className,
 		checked = $bindable(false),
-		size = "default",
+		icons = false,
 		...restProps
 	}: WithoutChildrenOrChild<SwitchPrimitive.RootProps> & {
-		size?: "sm" | "default";
+		/**
+		 * Handle icons. `true` / `"both"`: check when on, close when off. `"checked"`: check only when on.
+		 */
+		icons?: boolean | "checked" | "both";
 	} = $props();
+
+	let showChecked = $derived(icons !== false);
+	let showUnchecked = $derived(icons === true || icons === "both");
 </script>
 
-<SwitchPrimitive.Root
-	bind:ref
-	bind:checked
-	data-slot="switch"
-	data-size={size}
-	class={cn(
-		"data-checked:bg-primary data-unchecked:bg-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 dark:data-unchecked:bg-input/80 shrink-0 rounded-full border border-transparent focus-visible:ring-3 aria-invalid:ring-3 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:border-transparent data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] peer group/switch relative inline-flex items-center transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 data-disabled:cursor-not-allowed data-disabled:opacity-50",
-		className
-	)}
-	{...restProps}
->
-	<SwitchPrimitive.Thumb
-		data-slot="switch-thumb"
-		class={cn(
-			"bg-background dark:data-unchecked:bg-foreground dark:data-checked:bg-primary-foreground rounded-full group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%_-_2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%_-_2px)] group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 pointer-events-none block ring-0 transition-transform",
-			"rtl:data-[state=checked]:translate-x-[calc(-100%)]"
-		)}
-	/>
+<SwitchPrimitive.Root bind:ref bind:checked {...restProps}>
+	{#snippet child({ props, checked: on })}
+		<button
+			{...props}
+			data-slot="switch"
+			data-icons={showUnchecked ? "both" : showChecked ? "checked" : undefined}
+			class={cn("m3-switch peer", className)}
+			{@attach ripple({ centered: true })}
+		>
+			<span class="handle" data-slot="switch-thumb" aria-hidden="true">
+				{#if showChecked}
+					<span class="icon icon-on" data-visible={on || undefined}>
+						<Icon name="check" size={16} weight={500} />
+					</span>
+				{/if}
+				{#if showUnchecked}
+					<span class="icon icon-off" data-visible={!on || undefined}>
+						<Icon name="close" size={16} weight={500} />
+					</span>
+				{/if}
+			</span>
+		</button>
+	{/snippet}
 </SwitchPrimitive.Root>
+
+<style>
+	.m3-switch {
+		/* geometry: centers are measured from the outer edge (16 / 36dp); the 2dp border is always
+		   present (track-colored when selected) so the padding box starts 2dp in. */
+		--_cx: 14px;
+		--_size: 16px;
+		/* colors */
+		--_track: var(--md-sys-color-surface-container-highest);
+		--_outline: var(--md-sys-color-outline);
+		--_handle: var(--md-sys-color-outline);
+		--_icon: var(--md-sys-color-surface-container-highest);
+		color: var(--md-sys-color-on-surface); /* state layer */
+
+		--_spatial: var(--md-sys-motion-spring-fast-spatial-duration)
+			var(--md-sys-motion-spring-fast-spatial-easing);
+		--_effects: var(--md-sys-motion-spring-default-effects-duration)
+			var(--md-sys-motion-spring-default-effects-easing);
+
+		position: relative;
+		display: inline-block;
+		flex-shrink: 0;
+		box-sizing: border-box;
+		width: 52px;
+		height: 32px;
+		border: 2px solid var(--_outline);
+		border-radius: var(--md-sys-shape-corner-full);
+		background-color: var(--_track);
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		user-select: none;
+		transition:
+			background-color var(--_effects),
+			border-color var(--_effects);
+	}
+	/* 48dp touch target */
+	.m3-switch::after {
+		content: "";
+		position: absolute;
+		inset: -10px -2px;
+	}
+
+	.m3-switch[data-icons] {
+		--_size: 24px;
+	}
+	.m3-switch:is(:hover, :focus-visible, :active) {
+		--_handle: var(--md-sys-color-on-surface-variant);
+	}
+
+	.m3-switch[data-state="checked"] {
+		--_cx: 34px;
+		--_size: 24px;
+		--_track: var(--md-sys-color-primary);
+		--_outline: var(--md-sys-color-primary);
+		--_handle: var(--md-sys-color-on-primary);
+		--_icon: var(--md-sys-color-primary);
+		color: var(--md-sys-color-primary);
+	}
+	.m3-switch[data-state="checked"]:is(:hover, :focus-visible, :active) {
+		--_handle: var(--md-sys-color-primary-container);
+	}
+	.m3-switch:active {
+		--_size: 28px;
+	}
+
+	/* Disabled */
+	.m3-switch:is(:disabled, [data-disabled]) {
+		--_track: color-mix(in srgb, var(--md-sys-color-surface-container-highest) calc(var(--md-sys-state-disabled-container-opacity) * 100%), transparent);
+		--_outline: color-mix(in srgb, var(--md-sys-color-on-surface) calc(var(--md-sys-state-disabled-container-opacity) * 100%), transparent);
+		--_handle: color-mix(
+			in srgb,
+			var(--md-sys-color-on-surface) calc(var(--md-sys-state-disabled-content-opacity) * 100%),
+			transparent
+		);
+		--_icon: color-mix(
+			in srgb,
+			var(--md-sys-color-surface-container-highest) calc(var(--md-sys-state-disabled-content-opacity) * 100%),
+			transparent
+		);
+		cursor: default;
+	}
+	.m3-switch[data-state="checked"]:is(:disabled, [data-disabled]) {
+		--_track: color-mix(
+			in srgb,
+			var(--md-sys-color-on-surface) calc(var(--md-sys-state-disabled-container-opacity) * 100%),
+			transparent
+		);
+		--_outline: transparent;
+		--_handle: var(--md-sys-color-surface);
+		--_icon: color-mix(
+			in srgb,
+			var(--md-sys-color-on-surface) calc(var(--md-sys-state-disabled-content-opacity) * 100%),
+			transparent
+		);
+	}
+
+	/* The 40dp state layer sits on the handle and travels with it. */
+	.m3-switch > :global([data-m3-ripple]) {
+		inset: auto;
+		top: 50%;
+		left: var(--_cx);
+		width: 40px;
+		height: 40px;
+		translate: -50% -50%;
+		border-radius: var(--md-sys-shape-corner-full);
+		transition: left var(--_spatial);
+	}
+
+	.handle {
+		position: absolute;
+		top: 50%;
+		left: var(--_cx);
+		width: var(--_size);
+		height: var(--_size);
+		translate: -50% -50%;
+		display: grid;
+		place-items: center;
+		border-radius: var(--md-sys-shape-corner-full);
+		background-color: var(--_handle);
+		/* release / toggle: size + offset spring together (fast-spatial) */
+		transition:
+			left var(--_spatial),
+			width var(--_spatial),
+			height var(--_spatial),
+			background-color var(--_effects);
+	}
+	/* While pressed the handle snaps (Compose SnapSpec) */
+	.m3-switch:active .handle {
+		transition: background-color var(--_effects);
+	}
+	.m3-switch:is(:disabled, [data-disabled]) .handle {
+		transition: none;
+	}
+
+	.icon {
+		grid-area: 1 / 1;
+		display: grid;
+		place-items: center;
+		color: var(--_icon);
+		opacity: 0;
+		scale: 0.6;
+		transition:
+			opacity var(--md-sys-motion-spring-fast-effects-duration)
+				var(--md-sys-motion-spring-fast-effects-easing),
+			scale var(--_spatial),
+			color var(--_effects);
+	}
+	.icon[data-visible] {
+		opacity: 1;
+		scale: 1;
+	}
+</style>
