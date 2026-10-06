@@ -29,6 +29,8 @@
 		class={cn(
 			"flex h-14 shrink-0 items-center gap-1 ps-1 pe-3 transition-[background-color,box-shadow] duration-spring-default-effects ease-spring-default-effects data-scrolled:bg-surface-container data-scrolled:shadow-m3-2",
 			"[&>[data-slot=dialog-title]]:min-w-0 [&>[data-slot=dialog-title]]:flex-1 [&>[data-slot=dialog-title]]:truncate [&>[data-slot=dialog-title]]:ps-1",
+			// adaptive dialog at >= 600dp keeps the basic container (surface-container-high): stay on it
+			layout.fullscreen === true && "min-[600px]:data-scrolled:bg-surface-container-high",
 			className
 		)}
 		{...restProps}

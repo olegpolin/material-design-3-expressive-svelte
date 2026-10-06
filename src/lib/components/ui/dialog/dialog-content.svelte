@@ -22,10 +22,10 @@
 		variants: {
 			layout: {
 				basic:
-					"h-fit max-h-[calc(100dvh-160px)] w-fit max-w-[min(560px,calc(100vw-48px))] min-w-[280px] gap-4 rounded-m3-xl bg-surface-container-high p-6 shadow-m3-3",
+					"h-fit max-h-[calc(100%-160px)] w-fit max-w-[min(560px,calc(100%-48px))] min-w-[min(280px,calc(100%-32px))] gap-4 rounded-m3-xl bg-surface-container-high p-6 shadow-m3-3",
 				// full-screen: slides up 64dp + fades instead of scaling
 				fullscreen:
-					"max-[599px]:data-starting-style:translate-y-16 max-[599px]:data-starting-style:scale-100! max-[599px]:data-ending-style:translate-y-16 max-[599px]:data-ending-style:scale-100! bg-surface min-[600px]:h-fit min-[600px]:max-h-[calc(100dvh-160px)] min-[600px]:w-[min(560px,calc(100vw-48px))] min-[600px]:overflow-hidden min-[600px]:rounded-m3-xl min-[600px]:bg-surface-container-high min-[600px]:shadow-m3-3",
+					"max-[599px]:data-starting-style:translate-y-16 max-[599px]:data-starting-style:scale-100! max-[599px]:data-ending-style:translate-y-16 max-[599px]:data-ending-style:scale-100! bg-surface min-[600px]:h-fit min-[600px]:max-h-[calc(100%-160px)] min-[600px]:w-[min(560px,calc(100%-48px))] min-[600px]:overflow-hidden min-[600px]:rounded-m3-xl min-[600px]:bg-surface-container-high min-[600px]:shadow-m3-3",
 				always:
 					"bg-surface data-starting-style:translate-y-16 data-starting-style:scale-100! data-ending-style:translate-y-16 data-ending-style:scale-100!",
 			},

@@ -8,12 +8,13 @@
 		children,
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
+	// Card headline: title-medium, on-surface (pass `class="type-title-lg"` for a larger heading).
 </script>
 
 <div
 	bind:this={ref}
 	data-slot="card-title"
-	class={cn("type-title-lg text-on-surface", className)}
+	class={cn("type-title-md text-on-surface", className)}
 	{...restProps}
 >
 	{@render children?.()}

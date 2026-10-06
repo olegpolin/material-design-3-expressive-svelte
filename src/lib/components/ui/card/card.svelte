@@ -12,7 +12,9 @@
 	export const cardVariants = tv({
 		base: [
 			"group/card relative isolate flex flex-col gap-(--card-spacing) overflow-hidden py-(--card-spacing) text-on-surface type-body-md [--card-spacing:--spacing(4)]",
-			"has-[>[data-slot=card-media]:first-child]:pt-0 has-[>[data-slot=card-media]:last-child]:pb-0",
+			// full-bleed media as the first / last child drops the card padding on that side (the ripple
+			// attachment prepends its overlay span, so "first" skips it)
+			"has-[>[data-slot=card-media]:nth-child(1_of_:not([data-m3-ripple]))]:pt-0 has-[>[data-slot=card-media]:last-child]:pb-0",
 			// Tailwind scans literally, so the spring vars are spelled out (default-effects for every property)
 			"[transition:box-shadow_var(--md-sys-motion-spring-default-effects-duration)_var(--md-sys-motion-spring-default-effects-easing),border-color_var(--md-sys-motion-spring-default-effects-duration)_var(--md-sys-motion-spring-default-effects-easing),background-color_var(--md-sys-motion-spring-default-effects-duration)_var(--md-sys-motion-spring-default-effects-easing)]",
 			// dragged state layer: on-surface 16%
@@ -33,7 +35,8 @@
 				xxl: "rounded-m3-xxl",
 			},
 			interactive: {
-				true: "cursor-pointer text-start no-underline select-none",
+				// the state layer / ripple paints above full-bleed media too (Compose draws the indication over content)
+				true: "cursor-pointer text-start no-underline select-none [&>[data-m3-ripple]]:z-10",
 				false: "",
 			},
 			disabled: {

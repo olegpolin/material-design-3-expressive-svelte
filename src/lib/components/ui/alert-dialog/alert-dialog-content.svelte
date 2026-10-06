@@ -32,7 +32,7 @@
 		class={cn(
 			"group/alert-dialog-content",
 			dialogContentVariants({ layout: "basic" }),
-			size === "sm" && "max-w-[min(320px,calc(100vw-48px))]",
+			size === "sm" && "max-w-[min(320px,calc(100%-48px))]",
 			className
 		)}
 		{...restProps}

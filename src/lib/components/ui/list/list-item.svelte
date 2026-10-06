@@ -12,7 +12,7 @@
 	/**
 	 * M3 Expressive list item (navigation-containment.md §12).
 	 * Heights 56 / 72 / 88dp for one / two / three lines; 16dp leading / trailing padding, 10dp
-	 * top / bottom, 12dp between leading, content and trailing. Three-line items top-align their
+	 * top / bottom around the text, 12dp between leading, content and trailing. Three-line items top-align their
 	 * leading / trailing elements, shorter ones center them.
 	 * Type: headline body-large on-surface, supporting body-medium on-surface-variant, overline and
 	 * trailing text label-small on-surface-variant. Selected: secondary-container /
@@ -79,13 +79,17 @@
 
 	function innerClass(count: number) {
 		return cn(
-			"flex w-full gap-3 rounded-[inherit] py-2.5 ps-4 pe-4 text-start text-inherit outline-offset-[-3px]",
+			"flex w-full gap-3 rounded-[inherit] ps-4 pe-4 text-start text-inherit outline-offset-[-3px]",
 			"group-data-disabled/list-item:opacity-38",
+			// Three-line items top-align everything inside 10dp padding. Shorter items center their
+			// slots: the row has 8dp padding (a 40dp avatar still fits 56dp) and the text column
+			// adds 2dp, so text keeps the expressive 10dp. Tall media (56dp image, 64dp video)
+			// grows the item to 72 / 80dp.
 			count === 3
-				? "min-h-[88px] items-start"
+				? "min-h-[88px] items-start py-2.5"
 				: count === 2
-					? "min-h-[72px] items-center"
-					: "min-h-14 items-center"
+					? "min-h-[72px] items-center py-2"
+					: "min-h-14 items-center py-2"
 		);
 	}
 </script>
@@ -129,7 +133,7 @@
 			</span>
 		</span>
 	{/if}
-	<span class="flex min-w-0 flex-1 flex-col">
+	<span class={["flex min-w-0 flex-1 flex-col", lineCount < 3 && "py-0.5"]}>
 		{#if overline}
 			<span
 				class="truncate type-label-sm text-on-surface-variant group-data-selected/list-item:text-on-secondary-container"

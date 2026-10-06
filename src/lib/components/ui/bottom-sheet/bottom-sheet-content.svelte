@@ -49,7 +49,9 @@
 			"inset-x-0 bottom-0 mx-auto flex w-full max-w-[640px] flex-col rounded-t-m3-xl bg-surface-container-low text-on-surface shadow-m3-1 outline-none",
 			// the expressive spring overshoots a little: extend the surface below the bottom edge
 			"after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[200%] after:bg-inherit after:content-['']",
-			ctx.container ? "absolute z-10" : "fixed z-50 min-[640px]:max-w-[min(640px,calc(100%-112px))]",
+			// width is relative to the containing block (viewport, `container`, or a transformed frame
+			// the portal lands in): full width up to 640dp, then centered
+			ctx.container ? "absolute z-10" : "fixed z-50",
 			ctx.hasSnapPoints
 				? "h-full"
 				: "max-h-[calc(100%-72px)] min-[640px]:max-h-[calc(100%-56px)]",
@@ -58,8 +60,17 @@
 		{...dialogBehavior}
 		onOpenAutoFocus={(e) => {
 			onOpenAutoFocus?.(e);
-			// a standard sheet coexists with the page: don't pull focus into it
-			if (!ctx.modal) e.preventDefault();
+			if (e.defaultPrevented) return;
+			// Standard sheets coexist with the page: focus stays where it was. Modal sheets move focus
+			// to the sheet itself (not its first control, which could pop a soft keyboard); vaul
+			// would otherwise leave it on the trigger, outside the focus trap.
+			e.preventDefault();
+			if (ctx.modal) {
+				// `ref` is bound after the focus scope mounts: wait a frame
+				requestAnimationFrame(() => {
+					if (ref?.isConnected && !ref.contains(document.activeElement)) ref.focus({ preventScroll: true });
+				});
+			}
 		}}
 		{...restProps}
 	>

@@ -52,6 +52,8 @@
 	// Plain (non-reactive) caches: only the embla event handlers read them.
 	let arrangement: Arrangement | null = null;
 	let arrangedFor = -1;
+	/** Right-to-left: embla scrolls the other way and keyline offsets are mirrored. */
+	let rtl = false;
 
 	let options = $derived<EmblaOptionsType>(
 		keylines
@@ -102,7 +104,7 @@
 			const { x, width, largeness, visible } = fr[i];
 			// slide i sits at i·step − scroll inside the viewport; shift its item to the keyline
 			const natural = i * a.step - scroll;
-			slide.style.setProperty("--carousel-x", `${x - natural}px`);
+			slide.style.setProperty("--carousel-x", `${(x - natural) * (rtl ? -1 : 1)}px`);
 			slide.style.setProperty("--carousel-w", `${width}px`);
 			slide.style.setProperty("--carousel-largeness", `${largeness}`);
 			slide.style.zIndex = `${Math.round(largeness * 10)}`;
@@ -111,7 +113,8 @@
 	}
 
 	const embla: Attachment<HTMLDivElement> = (node) => {
-		const config = { options, plugins: [] };
+		rtl = getComputedStyle(node).direction === "rtl";
+		const config = { options: { ...options, direction: rtl ? "rtl" : "ltr" } as EmblaOptionsType, plugins: [] };
 		// re-read `layout` / `itemWidth` so the attachment re-runs when they change
 		void layout;
 		void itemWidth;
@@ -134,17 +137,51 @@
 		};
 	};
 
+	/** The element that takes focus for slide `slide`: its link / button, or the focusable item. */
+	function focusTarget(slide: HTMLElement) {
+		return slide.querySelector<HTMLElement>("a[href], button:not([disabled]), [tabindex='0']");
+	}
+
+	/**
+	 * Arrow keys move focus to the previous / next item and scroll it into a large keyline slot
+	 * (next: the last large slot, previous: the first), so keyboard users can reach every item
+	 * even while it is masked out of view.
+	 */
 	function onkeydown(e: KeyboardEvent) {
 		if (!api) return;
-		const prev = axis === "y" && layout === "full-screen" ? "ArrowUp" : "ArrowLeft";
-		const next = axis === "y" && layout === "full-screen" ? "ArrowDown" : "ArrowRight";
-		if (e.key === prev) {
-			e.preventDefault();
-			api.scrollPrev();
-		} else if (e.key === next) {
-			e.preventDefault();
-			api.scrollNext();
+		const vertical = axis === "y" && layout === "full-screen";
+		const rtl = !vertical && getComputedStyle(e.currentTarget as HTMLElement).direction === "rtl";
+		const prev = vertical ? "ArrowUp" : rtl ? "ArrowRight" : "ArrowLeft";
+		const next = vertical ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight";
+		const dir = e.key === next ? 1 : e.key === prev ? -1 : e.key === "Home" ? -Infinity : e.key === "End" ? Infinity : 0;
+		if (!dir) return;
+		e.preventDefault();
+		const slides = api.slideNodes();
+		const current = slides.findIndex((s) => s.contains(document.activeElement));
+		if (current < 0) {
+			if (dir > 0) api.scrollNext();
+			else api.scrollPrev();
+			return;
 		}
+		const target = Math.max(0, Math.min(slides.length - 1, current + dir));
+		if (target === current) return;
+		const registry = api.internalEngine().slideRegistry;
+		const snapOf = (i: number) => registry.findIndex((group) => group.includes(i));
+		if (keylines && arrangement) {
+			const large = arrangement.sizes.filter((s) => s === arrangement!.large).length;
+			const slide = slides[target];
+			const largeness = parseFloat(slide.style.getPropertyValue("--carousel-largeness") || "0");
+			const hidden = slide.style.visibility === "hidden";
+			if (hidden || largeness < 0.99) {
+				const first = dir > 0 ? Math.max(0, target - large + 1) : target;
+				api.scrollTo(Math.min(snapOf(first) < 0 ? Infinity : snapOf(first), api.scrollSnapList().length - 1));
+			}
+			slide.style.visibility = "";
+		} else {
+			const snap = snapOf(target);
+			if (snap >= 0) api.scrollTo(snap);
+		}
+		focusTarget(slides[target])?.focus({ preventScroll: true });
 	}
 </script>
 

@@ -36,7 +36,7 @@
 	const RIPPLE = { color: "var(--md-sys-color-on-surface)" };
 
 	const ITEM =
-		"relative block size-full overflow-hidden rounded-m3-xl bg-surface-container-highest p-0 text-start text-on-surface no-underline [transition:box-shadow_var(--md-sys-motion-spring-default-effects-duration)_var(--md-sys-motion-spring-default-effects-easing)] " +
+		"relative block size-full overflow-hidden rounded-m3-xl bg-surface-container-highest p-0 text-start text-on-surface no-underline focus-visible:outline-offset-[-3px] [transition:box-shadow_var(--md-sys-motion-spring-default-effects-duration)_var(--md-sys-motion-spring-default-effects-easing)] " +
 		// keyline layouts: positioned + masked by the carousel (CSS vars written on the slide)
 		"group-data-keylines/carousel:absolute group-data-keylines/carousel:inset-y-0 group-data-keylines/carousel:start-0 group-data-keylines/carousel:w-[var(--carousel-w,100%)] group-data-keylines/carousel:translate-x-[var(--carousel-x,0px)]";
 </script>
@@ -48,7 +48,7 @@
 			{alt}
 			draggable="false"
 			loading="lazy"
-			class="pointer-events-none absolute inset-0 size-full max-w-none object-cover select-none group-data-keylines/carousel:left-1/2 group-data-keylines/carousel:w-[var(--carousel-large,100%)] group-data-keylines/carousel:-translate-x-1/2"
+			class="pointer-events-none absolute inset-0 size-full max-w-none object-cover select-none group-data-keylines/carousel:right-auto group-data-keylines/carousel:left-1/2 group-data-keylines/carousel:w-[var(--carousel-large,100%)] group-data-keylines/carousel:-translate-x-1/2"
 		/>
 	{/if}
 	{@render children?.()}
@@ -91,7 +91,9 @@
 			{@render content()}
 		</button>
 	{:else}
-		<div class={ITEM}>
+		<!-- not interactive: still focusable so the carousel's arrow-key navigation can reach it -->
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<div class={ITEM} tabindex="0">
 			{@render content()}
 		</div>
 	{/if}

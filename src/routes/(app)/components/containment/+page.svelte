@@ -51,6 +51,12 @@
 	const STANDARD_SNAPS = ['56px', 0.45, 0.88];
 	let modalSnap = $state<number | string | null>(0.5);
 	let standardSideOpen = $state(true);
+	let inboxFilters = $state<string[]>(['star']);
+	const INBOX_FILTERS = [
+		['mark_email_unread', 'Unread only'],
+		['star', 'Starred'],
+		['attach_file', 'Attachments']
+	] as const;
 
 	// ------------------------------------------------------------------ lists
 	let selectedFolder = $state('inbox');
@@ -121,7 +127,7 @@
 	>
 		<div class="grid gap-6 md:grid-cols-3">
 			{#each CARD_VARIANTS as v (v.id)}
-				<Demo label={v.name} spec={v.spec} class="items-stretch">
+				<Demo label={v.name} spec={v.spec} class="items-stretch border border-outline-variant bg-surface">
 					<Card.Root variant={v.id} class="w-full">
 						<Card.Header>
 							<Card.Title>{v.name} card</Card.Title>
@@ -138,6 +144,7 @@
 		<Demo
 			label="Interactive"
 			spec="Whole card is one action · state layer on-surface 8 / 10 / 10% · ripple · hover +1 level · focus ring 3dp secondary"
+			class="border border-outline-variant bg-surface"
 		>
 			{#each CARD_VARIANTS as v (v.id)}
 				<Card.Root variant={v.id} interactive class="w-56" onclick={() => clicks++}>
@@ -153,7 +160,8 @@
 					</Card.Content>
 				</Card.Root>
 			{/each}
-			<Card.Root variant="filled" href="#cards" class="w-56">
+			<Card.Root variant="outlined" href="#cards" class="w-56">
+				<Card.Media src={img(10, 448, 252)} alt="" />
 				<Card.Header>
 					<Card.Title>Link card</Card.Title>
 					<Card.Description>Rendered as &lt;a&gt; via href</Card.Description>
@@ -164,8 +172,8 @@
 		<div class="grid gap-6 lg:grid-cols-2">
 			<Demo
 				label="With media and actions"
-				spec="Media full-bleed (inherits top corners) or inset (12dp) · actions end-aligned, 8dp gap"
-				class="items-start"
+				spec="Media full-bleed (inherits top corners) or inset (12dp) · title medium · body medium on-surface-variant · actions end-aligned, 8dp gap"
+				class="items-start border border-outline-variant bg-surface"
 			>
 				<Card.Root variant="elevated" class="w-64">
 					<Card.Media src={img(11)} alt="Mountain landscape" />
@@ -199,6 +207,7 @@
 				<Demo
 					label="Expressive shapes"
 					spec="shape md 12dp (spec) · lg 16 · xl 28 · xxl 48"
+					class="border border-outline-variant bg-surface"
 				>
 					{#each ['md', 'lg', 'xl', 'xxl'] as const as s (s)}
 						<Card.Root variant="filled" shape={s} class="size-24 items-center justify-center">
@@ -209,6 +218,7 @@
 				<Demo
 					label="Disabled · dragged"
 					spec="Disabled content 38% · dragged level4 (elevated) / level3 + 16% on-surface layer — drag the right card"
+					class="border border-outline-variant bg-surface"
 				>
 					<Card.Root variant="elevated" interactive disabled class="w-36">
 						<Card.Header>
@@ -466,7 +476,7 @@
 			</Demo>
 
 			<div class="flex flex-col gap-6">
-				<Demo label="Modal" spec="Scrim 32% · drag down or tap the scrim to dismiss · top margin 72dp (56dp > 640dp)">
+				<Demo label="Modal" spec="Scrim 32% · focus moves into the sheet · drag down, Esc or tap the scrim to dismiss · top margin 72dp (56dp > 640dp)">
 					<BottomSheet.Root>
 						<BottomSheet.Trigger>
 							{#snippet child({ props })}
@@ -533,7 +543,13 @@
 			class="p-0"
 		>
 			<SideSheet.Root variant="standard" bind:open={standardSideOpen}>
-				<div class="flex h-[420px] w-full overflow-hidden rounded-m3-xl bg-surface">
+				<div
+					class="flex h-[420px] w-full overflow-hidden rounded-m3-xl bg-surface"
+					{@attach (node) => {
+						// a 256dp standard sheet would crush the content on a phone: start closed there
+						if (node.clientWidth < 560) standardSideOpen = false;
+					}}
+				>
 					<div class="flex min-w-0 flex-1 flex-col gap-4 p-6">
 						<div class="flex items-center justify-between gap-2">
 							<span class="type-title-lg text-on-surface">Inbox</span>
@@ -560,10 +576,19 @@
 							<SideSheet.Title>Filters</SideSheet.Title>
 						</SideSheet.Header>
 						<SideSheet.Body class="px-0">
-							<List class="bg-transparent py-0">
-								<ListItem headline="Unread only" leadingIcon="mark_email_unread" onclick={() => {}} />
-								<ListItem headline="Starred" leadingIcon="star" onclick={() => {}} />
-								<ListItem headline="Attachments" leadingIcon="attach_file" onclick={() => {}} />
+							<List class="gap-0.5 bg-transparent px-3 py-0">
+								{#each INBOX_FILTERS as [icon, name] (icon)}
+									<ListItem
+										headline={name}
+										leadingIcon={icon}
+										trailingIcon={inboxFilters.includes(icon) ? 'check' : undefined}
+										selected={inboxFilters.includes(icon)}
+										onclick={() =>
+											(inboxFilters = inboxFilters.includes(icon)
+												? inboxFilters.filter((x) => x !== icon)
+												: [...inboxFilters, icon])}
+									/>
+								{/each}
 							</List>
 						</SideSheet.Body>
 						<SideSheet.Footer>
@@ -622,7 +647,7 @@
 		description="Expressive list items: 56 / 72 / 88dp for one / two / three lines, 16dp side padding, 10dp vertical padding, 12dp between slots. Interactive items morph their corners on the fast-spatial spring (hover 12dp, pressed 16dp); selection fills secondary-container with 16dp corners."
 	>
 		<div class="grid gap-6 lg:grid-cols-2">
-			<Demo label="One line" spec="56dp · leading icon 24dp / avatar 40dp · trailing icon / text label-small" class="p-0">
+			<Demo label="One line" spec="56dp · leading icon 24dp / avatar 40dp · 56dp image grows the item to 72dp · trailing icon 24dp / text label-small" class="p-0">
 				<List class="w-full rounded-m3-xl">
 					<ListItem headline="Leading icon" leadingIcon="inbox" trailingIcon="chevron_right" />
 					<ListItem headline="Leading avatar" leadingAvatar="A" trailingText="100+" />
@@ -631,7 +656,7 @@
 				</List>
 			</Demo>
 
-			<Demo label="Two lines" spec="72dp · headline body-large · supporting body-medium on-surface-variant" class="p-0">
+			<Demo label="Two lines" spec="72dp · headline body-large · supporting body-medium on-surface-variant · overline label-small · 114 × 64dp video → 80dp" class="p-0">
 				<List class="w-full rounded-m3-xl">
 					<ListItem
 						headline="Ali Connors"
@@ -754,7 +779,7 @@
 	<!-- ============================================================== CAROUSEL -->
 	<Section
 		title="Carousel"
-		description="Items have 28dp corners and 8dp gaps. Multi-browse and hero items are masked as they move through the keylines (small items clamp(large ÷ 3, 40, 56)dp); snapping uses a spring of stiffness 400, critically damped. Drag, swipe or use ← → after focusing an item."
+		description="Items have 28dp corners and 8dp gaps. Multi-browse and hero items are masked as they move through the keylines (small items clamp(large ÷ 3, 40, 56)dp); snapping uses a spring of stiffness 400, critically damped. Drag, swipe, or focus an item and use ← → (Home / End)."
 	>
 		<Demo
 			label="Multi-browse"

@@ -5,8 +5,9 @@
  * Every item is laid out at the large size and *masked* to its keyline width, so the content keeps
  * its aspect ratio. The scroll offset moves items from keyline slot to keyline slot (one slot per
  * `step = large + gap` of scroll). Leaving / entering items shrink to a 10dp anchor just outside
- * the viewport. Over the last few steps the slot sizes blend from the start arrangement
- * (`[L…, M, S]`) to the mirrored end arrangement (`[S, M, …L]`) so the last items can become large.
+ * the viewport. Over the last few items the slots step from the start arrangement (`[L…, M, S]`)
+ * to the mirrored end arrangement (`[S, M, …L]`), one keyline step per item, so the last items can
+ * become large and every snap position is a clean keyline state.
  */
 
 export type KeylineLayout = "multi-browse" | "hero";
@@ -102,12 +103,22 @@ export function frames(a: Arrangement, viewport: number, count: number, scroll: 
 	const n = a.sizes.length;
 	const maxIndex = Math.max(0, count - n);
 	const f = scroll / a.step;
-	// blend from start sizes to mirrored end sizes over the last `shift` steps
-	const blendStart = Math.max(0, maxIndex - a.shift);
-	const span = maxIndex - blendStart;
-	const u = span > 0 ? clamp((f - blendStart) / span, 0, 1) : 0;
-	const end = [...a.sizes].reverse();
-	const sizes = a.sizes.map((s, k) => lerp(s, end[k], u));
+	// End keyline steps (Compose `getEndKeylineSteps`): step k moves the last k non-large slots to
+	// the start, small first — [L, L, M, S] → [S, L, L, M] → [S, M, L, L]. One step per item of
+	// scroll over the last `shift` items, so every snap position lands exactly on a step.
+	const steps = Array.from({ length: a.shift + 1 }, (_, k) =>
+		k === 0 ? a.sizes : [...a.sizes.slice(n - k).reverse(), ...a.sizes.slice(0, n - k)]
+	);
+	// Too few items to scroll through every step: compress the steps into the available range.
+	const g =
+		maxIndex >= a.shift
+			? clamp(f - (maxIndex - a.shift), 0, a.shift)
+			: maxIndex > 0
+				? clamp((f * a.shift) / maxIndex, 0, a.shift)
+				: 0;
+	const s0 = Math.floor(g);
+	const s1 = Math.min(a.shift, s0 + 1);
+	const sizes = steps[s0].map((s, k) => lerp(s, steps[s1][k], g - s0));
 
 	// slot k left edge; slot -1 / n are the 10dp anchors just outside the viewport
 	const xs: number[] = [];
