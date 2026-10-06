@@ -5,7 +5,7 @@
 	import { Icon } from "#lib/components/ui/icon/index.js";
 	import { LinearProgress, CircularProgress } from "#lib/components/ui/progress/index.js";
 	import { LoadingIndicator } from "#lib/components/ui/loading-indicator/index.js";
-	import { Snackbar, snackbar } from "#lib/components/ui/snackbar/index.js";
+	import { snackbar } from "#lib/components/ui/snackbar/index.js";
 	import * as Tooltip from "#lib/components/ui/tooltip/index.js";
 	import { Skeleton } from "#lib/components/ui/skeleton/index.js";
 	import { ripple } from "#lib/m3/ripple.svelte.js";
@@ -73,7 +73,6 @@
 	</div>
 {/snippet}
 
-<Snackbar />
 
 <Tooltip.Provider>
 	<Page

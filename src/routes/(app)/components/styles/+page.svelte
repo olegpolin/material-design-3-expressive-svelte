@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { toggleMode } from 'mode-watcher';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Icon } from '#lib/components/ui/icon/index.js';
-	import { getTheme, SCHEME_VARIANTS, type SpecVersion } from '#lib/m3/theme.svelte.js';
+	import { getAppShell } from '#lib/components/app/index.js';
+	import { getTheme } from '#lib/m3/theme.svelte.js';
 	import type { ColorRole } from '#lib/m3/color-roles.js';
-	import { animateSpring, SPRINGS, type MotionScheme } from '#lib/m3/motion.js';
+	import { animateSpring, SPRINGS } from '#lib/m3/motion.js';
 	import { ripple, stateLayer } from '#lib/m3/ripple.svelte.js';
 	import { morphPath, shapePath, SHAPE_LABELS, SHAPE_NAMES, type ShapeName } from '#lib/m3/shapes.js';
 
 	const theme = getTheme();
-	const SPEC_VERSIONS: SpecVersion[] = ['2021', '2025'];
-	const MOTION_SCHEMES: MotionScheme[] = ['expressive', 'standard'];
+	// Present inside the (app) shell; the theme controls themselves live in its Theme panel.
+	const shell = getAppShell();
 
 	// ---------------------------------------------------------------- (a) color roles
 	// Class strings are written out literally so Tailwind generates (and thereby verifies) every utility.
@@ -208,7 +208,7 @@
 	</header>
 {/snippet}
 
-<main class="mx-auto flex max-w-7xl flex-col gap-16 px-4 py-10 sm:px-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-16 px-4 py-10 sm:px-8">
 	<header class="flex flex-col gap-3">
 		<p class="type-label-lg-emphasized text-m3-primary">Foundation</p>
 		<h1 class="type-display-lg-emphasized text-on-surface">Styles</h1>
@@ -219,125 +219,40 @@
 		</p>
 	</header>
 
-	<!-- (b) theme controls -->
+	<!-- (b) theme status: the controls live in the shell's Theme panel -->
 	<section aria-labelledby="theme-controls" class="rounded-m3-xl bg-surface-container-low p-6 shadow-m3-1">
-		<h2 id="theme-controls" class="type-title-lg mb-6 text-on-surface">Theme</h2>
-		<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-			<label class="flex flex-col gap-2">
-				<span class="type-label-lg text-on-surface-variant">Seed color</span>
-				<span class="flex items-center gap-3">
-					<input
-						type="color"
-						aria-label="Seed color picker"
-						value={/^#[0-9a-f]{6}$/i.test(theme.seed) ? theme.seed.toLowerCase() : '#6750a4'}
-						oninput={(e) => (theme.seed = e.currentTarget.value)}
-						class="size-12 cursor-pointer rounded-m3-md border border-outline bg-transparent p-1"
-					/>
-					<input
-						type="text"
-						bind:value={theme.seed}
-						spellcheck="false"
-						class="type-body-lg h-12 w-full min-w-0 rounded-m3-xs border border-outline bg-transparent px-3 font-mono text-on-surface focus-visible:border-m3-primary"
-					/>
-				</span>
-			</label>
-
-			<label class="flex flex-col gap-2">
-				<span class="type-label-lg text-on-surface-variant">Scheme variant</span>
-				<select
-					bind:value={theme.variant}
-					class="type-body-lg h-12 rounded-m3-xs border border-outline bg-surface-container-low px-3 text-on-surface"
-				>
-					{#each SCHEME_VARIANTS as v (v.value)}
-						<option value={v.value}>{v.label}</option>
-					{/each}
-				</select>
-			</label>
-
-			<label class="flex flex-col gap-2">
-				<span class="type-label-lg flex justify-between text-on-surface-variant">
-					<span>Contrast</span>
-					<span class="tabular-nums">{theme.contrast.toFixed(1)}</span>
-				</span>
-				<input
-					type="range"
-					min="-1"
-					max="1"
-					step="0.1"
-					bind:value={theme.contrast}
-					class="h-12 accent-[var(--md-sys-color-primary)]"
-				/>
-			</label>
-
-			<div class="flex flex-col gap-2">
-				<span class="type-label-lg text-on-surface-variant">Spec version</span>
-				<div class="flex h-12 overflow-hidden rounded-m3-full border border-outline">
-					{#each SPEC_VERSIONS as v (v)}
-						<button
-							type="button"
-							class={[
-								'type-label-lg flex-1 transition-colors duration-spring-fast-effects ease-spring-fast-effects',
-								theme.specVersion === v ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'
-							]}
-							aria-pressed={theme.specVersion === v}
-							onclick={() => (theme.specVersion = v)}
-							{@attach ripple()}
-						>
-							{v}
-						</button>
-					{/each}
-				</div>
-			</div>
-		</div>
-
-		<div class="mt-6 flex flex-wrap items-center gap-3">
-			<button
-				type="button"
-				class="type-label-lg inline-flex h-10 items-center gap-2 rounded-m3-full bg-m3-primary px-4 text-on-primary"
-				onclick={toggleMode}
-				{@attach ripple()}
-			>
-				<Icon name={theme.dark ? 'light_mode' : 'dark_mode'} size={20} />
-				{theme.dark ? 'Light mode' : 'Dark mode'}
-			</button>
-
-			<div class="flex h-10 overflow-hidden rounded-m3-full border border-outline" role="group" aria-label="Motion scheme">
-				{#each MOTION_SCHEMES as s (s)}
-					<button
-						type="button"
-						class={[
-							'type-label-lg px-4 capitalize transition-colors duration-spring-fast-effects ease-spring-fast-effects',
-							theme.motionScheme === s ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'
-						]}
-						aria-pressed={theme.motionScheme === s}
-						onclick={() => (theme.motionScheme = s)}
-						{@attach ripple()}
-					>
-						{s} motion
-					</button>
-				{/each}
-			</div>
-
-			<button
-				type="button"
-				class="type-label-lg inline-flex h-10 items-center gap-2 rounded-m3-full px-4 text-m3-primary disabled:text-on-surface/38"
-				disabled={theme.isBaseline}
-				onclick={() => theme.reset()}
-				{@attach ripple()}
-			>
-				<Icon name="restart_alt" size={20} />
-				Reset to baseline
-			</button>
-
-			<span class="type-body-sm text-on-surface-variant">
-				{#if !theme.ready}
-					Loading material-color-utilities…
-				{:else if theme.isBaseline}
-					Static M3 baseline (layout.css)
-				{:else}
-					Generated with MCU · {theme.variant} · contrast {theme.contrast.toFixed(1)} · spec {theme.specVersion}
-				{/if}
+		<div class="flex flex-wrap items-center gap-4">
+			<span class="grid size-12 shrink-0 place-items-center rounded-m3-full bg-primary-container text-on-primary-container">
+				<Icon name="palette" fill />
 			</span>
+			<div class="flex min-w-0 flex-1 flex-col gap-1">
+				<h2 id="theme-controls" class="type-title-lg text-on-surface">Theme</h2>
+				<p class="type-body-md text-on-surface-variant">
+					Use the Theme panel (palette button in the rail or app bar) to change the seed color, scheme
+					variant, contrast, dark mode, motion scheme and spec version. Everything on this page follows it live.
+				</p>
+				<p class="type-body-sm text-on-surface-variant">
+					{#if !theme.ready}
+						Loading material-color-utilities…
+					{:else if theme.isBaseline}
+						Static M3 baseline (layout.css) · {theme.dark ? 'dark' : 'light'} · {theme.motionScheme} motion
+					{:else}
+						Generated with MCU · seed {theme.seed.toUpperCase()} · {theme.variant} · contrast {theme.contrast.toFixed(1)}
+						· spec {theme.specVersion} · {theme.dark ? 'dark' : 'light'} · {theme.motionScheme} motion
+					{/if}
+				</p>
+			</div>
+			{#if shell}
+				<button
+					type="button"
+					class="type-label-lg inline-flex h-10 shrink-0 items-center gap-2 rounded-m3-full bg-m3-primary px-4 text-on-primary"
+					onclick={() => shell.openThemePanel()}
+					{@attach ripple()}
+				>
+					<Icon name="tune" size={20} />
+					Open Theme panel
+				</button>
+			{/if}
 		</div>
 
 		<div class="mt-6 flex flex-wrap items-center gap-3 border-t border-outline-variant pt-6">
@@ -641,4 +556,4 @@
 			</div>
 		</div>
 	</section>
-</main>
+</div>
