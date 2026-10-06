@@ -1,7 +1,9 @@
 @import 'tailwindcss';
 @import "tw-animate-css";
 @import "shadcn-svelte/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/roboto-flex";
+@import "@fontsource-variable/google-sans-flex";
+@import "material-symbols/rounded.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -75,7 +77,8 @@
 }
 
 @theme inline {
-	--font-sans: 'Inter Variable', sans-serif;
+	--font-sans: 'Roboto Flex Variable', 'Roboto', system-ui, sans-serif;
+	--font-brand: 'Google Sans Flex Variable', 'Roboto Flex Variable', system-ui, sans-serif;
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,4 +129,21 @@
 	html {
 		@apply font-sans;
 	}
+}
+
+/* Material Symbols icon helper (see src/lib/components/ui/icon) */
+.m3-icon {
+	font-size: var(--m3-icon-size, 24px);
+	width: 1em;
+	height: 1em;
+	line-height: 1;
+	display: inline-block;
+	flex-shrink: 0;
+	user-select: none;
+	font-variation-settings:
+		'FILL' var(--m3-icon-fill, 0),
+		'wght' var(--m3-icon-wght, 400),
+		'GRAD' var(--m3-icon-grad, 0),
+		'opsz' var(--m3-icon-opsz, 24);
+	transition: font-variation-settings 200ms cubic-bezier(0.2, 0, 0, 1);
 }
