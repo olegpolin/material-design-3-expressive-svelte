@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { CalendarDate, type DateValue } from '@internationalized/date';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as ButtonGroup from '#lib/components/ui/button-group/index.js';
@@ -68,6 +69,13 @@
 	let filters = $state<TaskFilters>(structuredClone(DEFAULT_FILTERS));
 	let query = $state('');
 	let searchOpen = $state(false);
+	let searchInput = $state<HTMLInputElement | null>(null);
+	async function toggleSearch() {
+		searchOpen = !searchOpen;
+		if (!searchOpen) return;
+		await tick();
+		searchInput?.focus();
+	}
 	let filtersSheet = $state<ReturnType<typeof FiltersSheet>>();
 	let sheetOpen = $state(false);
 	const filterCount = $derived(activeFilterCount(filters));
@@ -139,8 +147,32 @@
 		snackbar(`${id} assigned to you`);
 	}
 
+	let taskDialog = $state<ReturnType<typeof NewTaskDialog>>();
+	function editTask(id: string) {
+		const t = tasks.find((x) => x.id === id);
+		if (t) taskDialog?.edit(t);
+	}
+
 	let nextId = 1043;
-	function createTask(n: NewTask) {
+	function saveTask(n: NewTask, editId?: string) {
+		if (editId) {
+			const t = tasks.find((x) => x.id === editId);
+			if (!t) return;
+			const before = { ...t };
+			t.title = n.title;
+			t.project = n.project;
+			t.assigneeId = n.assigneeId;
+			if (n.urgent) t.priority = 'high';
+			else if (t.priority === 'high') t.priority = 'medium';
+			snackbar(`${editId} updated`, {
+				action: 'Undo',
+				onAction: () => {
+					const x = tasks.find((y) => y.id === editId);
+					if (x) Object.assign(x, before);
+				}
+			});
+			return;
+		}
 		const id = `ORB-${nextId++}`;
 		tasks = [
 			{
@@ -161,7 +193,11 @@
 	// ---------------------------------------------------------------- misc
 	let dialogOpen = $state(false);
 	let loading = $state(false);
-	let unread = $state(NOTIFICATIONS.length);
+	let readIds = $state<string[]>([]);
+	const unread = $derived(NOTIFICATIONS.filter((n) => !readIds.includes(n.id)).length);
+	const markRead = (id: string) => {
+		if (!readIds.includes(id)) readIds = [...readIds, id];
+	};
 	let weeklyReport = $state(false);
 
 	function exportAs(kind: string) {
@@ -174,7 +210,7 @@
 </svelte:head>
 
 {#snippet actions()}
-	<AppBarAction icon="search" label="Search tasks" selected={searchOpen} onclick={() => (searchOpen = !searchOpen)} />
+	<AppBarAction icon="search" label="Search tasks" selected={searchOpen} aria-expanded={searchOpen} onclick={toggleSearch} />
 	<Menu.Root>
 		<Menu.Trigger>
 			{#snippet child({ props })}
@@ -188,19 +224,28 @@
 		<Menu.Content align="end" class="w-80 max-w-[calc(100vw-32px)]">
 			<Menu.Group>
 				<Menu.GroupHeading>Notifications</Menu.GroupHeading>
-				{#each NOTIFICATIONS as n, i (n.id)}
-					<Menu.Item class="h-auto min-h-14 items-start py-3">
-						<Icon name={n.icon} />
+				{#each NOTIFICATIONS as n (n.id)}
+					{@const isUnread = !readIds.includes(n.id)}
+					<!-- selecting a notification marks it read (the badge count drops) -->
+					<Menu.Item class="h-auto min-h-14 items-start py-3" onSelect={() => markRead(n.id)}>
+						<Icon name={n.icon} fill={isUnread} />
 						<span class="flex min-w-0 flex-1 flex-col whitespace-normal">
-							<span class={i < unread ? 'type-body-md-emphasized' : 'type-body-md'}>{n.text}</span>
-							<span class="type-body-sm text-on-surface-variant">{n.time}</span>
+							<span class={isUnread ? 'type-body-md-emphasized text-on-surface' : 'type-body-md text-on-surface-variant'}>
+								{n.text}
+							</span>
+							<span class="type-body-sm text-on-surface-variant">
+								{n.time}{#if isUnread}<span class="sr-only">, unread</span>{/if}
+							</span>
 						</span>
+						{#if isUnread}
+							<span class="mt-1.5 size-2 shrink-0 rounded-m3-full bg-m3-primary" aria-hidden="true"></span>
+						{/if}
 					</Menu.Item>
 				{/each}
 			</Menu.Group>
 			<Menu.Separator />
 			<Menu.Group>
-				<Menu.Item disabled={unread === 0} onSelect={() => (unread = 0)}>
+				<Menu.Item disabled={unread === 0} onSelect={() => (readIds = NOTIFICATIONS.map((n) => n.id))}>
 					<Icon name="done_all" />Mark all as read
 				</Menu.Item>
 			</Menu.Group>
@@ -247,25 +292,26 @@
 			{@render actions()}
 		{/snippet}
 	</TopAppBar>
-	<header class="flex items-end gap-2 px-4 pt-4 pb-2 min-[600px]:px-6 min-[840px]:sr-only">
-		<div class="flex min-w-0 flex-1 flex-col">
+	<header class="flex flex-col gap-1 px-4 pt-4 pb-2 min-[600px]:px-6 min-[840px]:sr-only">
+		<div class="flex min-h-12 items-center gap-2">
 			<!-- the one page heading; visually provided by the app bar on expanded windows -->
-			<h1 class="type-headline-md text-on-surface">Dashboard</h1>
-			<p class="type-label-lg text-on-surface-variant min-[840px]:hidden">{subtitle}</p>
+			<h1 class="min-w-0 flex-1 truncate type-headline-md text-on-surface">Dashboard</h1>
+			<div class="-me-2 flex shrink-0 items-center text-on-surface-variant min-[840px]:hidden">
+				{@render actions()}
+			</div>
 		</div>
-		<div class="-me-2 flex shrink-0 items-center text-on-surface-variant min-[840px]:hidden">
-			{@render actions()}
-		</div>
+		<p class="type-label-lg text-on-surface-variant min-[840px]:hidden">{subtitle}</p>
 	</header>
 
-	<div class="flex flex-col gap-4 px-4 min-[600px]:gap-6 min-[600px]:px-6 min-[840px]:px-6">
+	<!-- margins: 16dp compact, 24dp medium / expanded; 16dp between cards at every size -->
+	<div class="flex flex-col gap-4 px-4 min-[600px]:gap-6 min-[600px]:px-6">
 		{#if searchOpen}
 			<SearchBar
 				bind:value={query}
+				bind:ref={searchInput}
 				placeholder="Search tasks, projects or people"
 				leadingIcon="search"
 				elevated={false}
-				autofocus
 				class="max-w-2xl"
 				barClass="bg-surface-container-high"
 				onkeydown={(e) => {
@@ -284,7 +330,8 @@
 		{/if}
 
 		<!-- ------------------------------------------------------------ filter row -->
-		<section aria-label="Dashboard filters" class="flex flex-col gap-3">
+		<!-- pt-2 keeps the date field's floating label clear of the app bar's bottom edge -->
+		<section aria-label="Dashboard filters" class="flex flex-col gap-3 pt-2">
 			<div class="flex flex-wrap items-center gap-3">
 				<ButtonGroup.Root
 					variant="connected"
@@ -305,7 +352,7 @@
 					bind:value={endDate}
 					maxValue={maxDate}
 					supportingText=""
-					class="w-56 max-[599px]:w-full"
+					class="w-48 max-[599px]:w-full min-[1200px]:w-56"
 				/>
 				<div class="ms-auto flex items-center gap-2 max-[599px]:ms-0">
 					<SplitButton.Root variant="filled" size="sm">
@@ -358,7 +405,7 @@
 		</section>
 
 		<!-- ------------------------------------------------------------ grid -->
-		<div class="grid grid-cols-1 gap-4 min-[600px]:grid-cols-8 min-[600px]:gap-6 min-[1200px]:grid-cols-12">
+		<div class="grid grid-cols-1 gap-4 min-[600px]:grid-cols-8 min-[1200px]:grid-cols-12">
 			<h2 class="sr-only">Key metrics</h2>
 			{#each kpis as kpi (kpi.id)}
 				<StatTile {kpi} {loading} class="min-[600px]:col-span-4 min-[1200px]:col-span-3" />
@@ -378,10 +425,11 @@
 				onstatus={setStatus}
 				ondelete={remove}
 				onassign={assignToMe}
+				onedit={editTask}
 				class="min-[600px]:col-span-8 min-[1200px]:col-span-12"
 			/>
 			<div
-				class="grid gap-4 min-[600px]:col-span-8 min-[600px]:grid-cols-2 min-[600px]:gap-6 min-[1200px]:col-span-12 min-[1200px]:grid-cols-[7fr_5fr]"
+				class="grid gap-4 min-[600px]:col-span-8 min-[600px]:grid-cols-2 min-[1200px]:col-span-12 min-[1200px]:grid-cols-[7fr_5fr]"
 			>
 				<ActivityCard {loading} />
 				<TeamCard {loading} oninvite={() => snackbar('Invite link copied to clipboard')} />
@@ -407,5 +455,5 @@
 	onclick={() => (dialogOpen = true)}
 />
 
-<NewTaskDialog bind:open={dialogOpen} onsave={createTask} />
+<NewTaskDialog bind:this={taskDialog} bind:open={dialogOpen} onsave={saveTask} />
 <FiltersSheet bind:this={filtersSheet} bind:open={sheetOpen} {filters} onapply={(f) => (filters = f)} />

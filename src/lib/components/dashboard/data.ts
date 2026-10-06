@@ -125,6 +125,8 @@ export type Kpi = {
 	value: number;
 	/** Display string for `value`. */
 	display: string;
+	/** Formats any value of this metric like `display` (used while the number tweens). */
+	format: (n: number) => string;
 	/** Relative change vs the previous period, in percent. */
 	delta: number;
 	/** Whether an increase is good news (churn: it isn't). */
@@ -162,6 +164,7 @@ export function getKpis(range: RangeKey): Kpi[] {
 			icon: 'payments',
 			value: revenue,
 			display: formatCurrency(revenue),
+			format: formatCurrency,
 			delta: 12.4 + jitter(),
 			upIsGood: true,
 			color: 'var(--md-sys-color-primary)',
@@ -173,6 +176,7 @@ export function getKpis(range: RangeKey): Kpi[] {
 			icon: 'group',
 			value: users,
 			display: formatInteger(users),
+			format: (n) => formatInteger(Math.round(n)),
 			delta: 6.1 + jitter(),
 			upIsGood: true,
 			color: 'var(--md-sys-color-tertiary)',
@@ -180,10 +184,11 @@ export function getKpis(range: RangeKey): Kpi[] {
 		},
 		{
 			id: 'tasks',
-			label: 'Tasks completed',
+			label: 'Tasks done',
 			icon: 'task_alt',
 			value: tasks,
 			display: formatInteger(tasks),
+			format: (n) => formatInteger(Math.round(n)),
 			delta: -3.2 + jitter() / 2,
 			upIsGood: true,
 			color: 'var(--md-sys-color-secondary)',
@@ -192,9 +197,10 @@ export function getKpis(range: RangeKey): Kpi[] {
 		{
 			id: 'churn',
 			label: 'Churn rate',
-			icon: 'trending_down',
+			icon: 'person_remove',
 			value: churn,
 			display: churn.toFixed(1) + '%',
+			format: (n) => n.toFixed(1) + '%',
 			delta: -8.5 + jitter(),
 			upIsGood: false,
 			color: 'var(--md-sys-color-primary)',
@@ -210,7 +216,7 @@ export type CategoryPoint = { category: string; completed: number; open: number 
 export function getCategories(range: RangeKey): CategoryPoint[] {
 	const rnd = prng(RANGE_SEED[range] * 3);
 	const s = RANGE_SCALE[range];
-	return ['Design', 'Frontend', 'Backend', 'Growth', 'Support'].map((category, i) => {
+	return ['Design', 'Apps', 'Infra', 'Growth', 'Support'].map((category, i) => {
 		const total = (120 + i * 18 + rnd() * 90) * Math.max(s, 0.08) * 3;
 		const done = 0.45 + rnd() * 0.4;
 		return { category, completed: Math.round(total * done), open: Math.round(total * (1 - done)) };
@@ -301,9 +307,9 @@ export const STORAGE = {
 	usedGb: 68.4,
 	totalGb: 100,
 	breakdown: [
-		{ id: 'docs', label: 'Documents', gb: 31.2, color: 'var(--md-sys-color-primary)' },
-		{ id: 'media', label: 'Media', gb: 24.9, color: 'var(--md-sys-color-tertiary)' },
-		{ id: 'backups', label: 'Backups', gb: 12.3, color: 'var(--md-sys-color-outline)' }
+		{ id: 'docs', label: 'Documents', gb: 31.2, icon: 'description' },
+		{ id: 'media', label: 'Media', gb: 24.9, icon: 'perm_media' },
+		{ id: 'backups', label: 'Backups', gb: 12.3, icon: 'backup' }
 	]
 } as const;
 

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { BarChart } from 'layerchart';
 	import * as Chart from '#lib/components/ui/chart/index.js';
+	import { cn } from '#lib/utils.js';
+	import { CHART_CLASS } from './chart-theme.js';
 	import ChartTooltip from './chart-tooltip.svelte';
 	import Panel from './panel.svelte';
 	import { scaleBand } from './d3.js';
@@ -23,22 +25,21 @@
 			</li>
 		{/each}
 	</ul>
-	<Chart.Container {config} class="aspect-auto h-60 w-full">
+	<Chart.Container {config} class={cn('aspect-auto h-60 w-full', CHART_CLASS)}>
 		<BarChart
 			{data}
 			x="category"
 			xScale={scaleBand().padding(0.28)}
 			seriesLayout="group"
 			groupPadding={0.12}
-			padding={{ left: 32, bottom: 24, top: 8, right: 0 }}
+			padding={{ left: 28, bottom: 24, top: 8, right: 0 }}
 			series={[
-				{ key: 'completed', label: config.completed.label, color: 'var(--color-completed)' },
-				{ key: 'open', label: config.open.label, color: 'var(--color-open)' }
+				{ key: 'completed', label: config.completed.label, color: config.completed.color },
+				{ key: 'open', label: config.open.label, color: config.open.color }
 			]}
 			props={{
 				bars: { radius: 6, rounded: 'top', strokeWidth: 0, motion: 'tween' },
 				yAxis: { format: (v: number) => formatCompact(v), ticks: 4 },
-				grid: { class: '[&_line]:stroke-outline-variant/60' },
 				highlight: { area: { class: 'fill-on-surface/8' } }
 			}}
 		>

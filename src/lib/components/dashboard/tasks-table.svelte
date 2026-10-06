@@ -8,11 +8,12 @@
 	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 	import * as Table from '#lib/components/ui/table/index.js';
 	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
+	import { stateLayer } from '#lib/m3/ripple.svelte.js';
 	import { cn } from '#lib/utils.js';
 	import MemberAvatar from './member-avatar.svelte';
 	import Panel from './panel.svelte';
 	import StatusPill from './status-pill.svelte';
-	import { formatDue, memberById, PRIORITY_LABEL, TODAY, isoDate, type Task, type TaskPriority } from './data.js';
+	import { formatDue, isoDate, ME, memberById, PRIORITY_LABEL, TODAY, type Task, type TaskPriority } from './data.js';
 
 	let {
 		tasks,
@@ -21,6 +22,7 @@
 		onstatus,
 		ondelete,
 		onassign,
+		onedit,
 		class: className
 	}: {
 		/** Already filtered rows. */
@@ -31,6 +33,7 @@
 		onstatus?: (ids: string[], status: Task['status']) => void;
 		ondelete?: (ids: string[]) => void;
 		onassign?: (id: string) => void;
+		onedit?: (id: string) => void;
 		class?: string;
 	} = $props();
 
@@ -92,19 +95,27 @@
 	const CELL = 'h-14 px-4 py-0 type-body-md text-on-surface';
 </script>
 
-{#snippet sortButton(key: SortKey, label: string)}
+<!-- Sort control: the arrow sits on the side facing the column's content (leading for end-aligned
+     numeric columns) so the label stays aligned with the values; hidden until hover/focus/active. -->
+{#snippet sortButton(key: SortKey, label: string, end = false)}
+	{@const active = sort?.key === key}
 	<button
 		type="button"
-		class="-mx-2 inline-flex h-10 cursor-pointer items-center gap-1 rounded-m3-full px-2 type-label-lg"
+		class={cn(
+			'group/sort -mx-2 inline-flex h-10 cursor-pointer items-center gap-1 rounded-m3-full px-2 type-label-lg',
+			end && 'flex-row-reverse',
+			active && 'text-on-surface'
+		)}
 		onclick={() => toggleSort(key)}
+		{@attach stateLayer()}
 	>
 		{label}
 		<Icon
-			name={sort?.key === key && sort.dir === 'desc' ? 'arrow_downward' : 'arrow_upward'}
+			name={active && sort?.dir === 'desc' ? 'arrow_downward' : 'arrow_upward'}
 			size={18}
 			class={cn(
 				'transition-opacity duration-spring-fast-effects ease-spring-fast-effects',
-				sort?.key === key ? 'opacity-100' : 'opacity-0 group-hover/th:opacity-60'
+				active ? 'opacity-100' : 'opacity-0 group-hover/th:opacity-60 group-focus-visible/sort:opacity-60'
 			)}
 		/>
 	</button>
@@ -126,16 +137,16 @@
 	description={tasks.length === total ? `${total} tasks across all projects` : `${tasks.length} of ${total} tasks match your filters`}
 	{loading}
 	class={className}
-	contentClass="px-0"
+	contentClass="px-0 max-[599px]:[&_[data-slot=table-container]]:max-h-[min(70dvh,600px)]"
 >
 	{#snippet skeleton()}
 		<div class="flex flex-col">
 			{#each [0, 1, 2, 3, 4, 5] as i (i)}
 				<div class="flex h-14 items-center gap-4 border-b border-outline-variant px-6">
-					<Skeleton class="bg-on-surface/10 size-[18px] rounded-m3-xs" />
-					<Skeleton class="bg-on-surface/10 h-4 flex-1 rounded-m3-xs" />
-					<Skeleton class="bg-on-surface/10 h-6 w-24 rounded-m3-sm" />
-					<Skeleton class="bg-on-surface/10 h-4 w-16 rounded-m3-xs" />
+					<Skeleton class="size-[18px] rounded-m3-xs bg-on-surface/10" />
+					<Skeleton class="h-4 flex-1 rounded-m3-xs bg-on-surface/10" />
+					<Skeleton class="h-6 w-24 rounded-m3-sm bg-on-surface/10" />
+					<Skeleton class="h-4 w-16 rounded-m3-xs bg-on-surface/10" />
 				</div>
 			{/each}
 		</div>
@@ -162,9 +173,10 @@
 
 	<Table.Root class="min-w-[880px] border-collapse">
 		<Table.Caption class="sr-only">Recent tasks, {rangeText}</Table.Caption>
-		<Table.Header class="[&_tr]:border-outline-variant">
+		<!-- sticky inside the table's own scroll box (it scrolls vertically on compact windows) -->
+		<Table.Header class="sticky top-0 z-[1] bg-surface-container-low [&_tr]:border-outline-variant">
 			<Table.Row class="border-b border-outline-variant hover:bg-transparent">
-				<Table.Head class={cn(HEAD, 'w-14 ps-6 pe-0')}>
+				<Table.Head scope="col" class={cn(HEAD, 'w-14 ps-6 pe-0')}>
 					<Checkbox
 						checked={allOnPage}
 						indeterminate={someOnPage}
@@ -173,24 +185,26 @@
 						disabled={rows.length === 0}
 					/>
 				</Table.Head>
-				<Table.Head class={HEAD}>Task</Table.Head>
-				<Table.Head class={HEAD}>Project</Table.Head>
-				<Table.Head class={HEAD}>Assignee</Table.Head>
-				<Table.Head class={HEAD}>Status</Table.Head>
-				<Table.Head class={HEAD}>Priority</Table.Head>
+				<Table.Head scope="col" class={HEAD}>Task</Table.Head>
+				<Table.Head scope="col" class={HEAD}>Project</Table.Head>
+				<Table.Head scope="col" class={HEAD}>Assignee</Table.Head>
+				<Table.Head scope="col" class={HEAD}>Status</Table.Head>
+				<Table.Head scope="col" class={HEAD}>Priority</Table.Head>
 				<Table.Head
+					scope="col"
 					class={cn(HEAD, 'group/th')}
 					aria-sort={sort?.key === 'due' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
 				>
 					{@render sortButton('due', 'Due')}
 				</Table.Head>
 				<Table.Head
+					scope="col"
 					class={cn(HEAD, 'group/th text-end')}
 					aria-sort={sort?.key === 'points' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
 				>
-					{@render sortButton('points', 'Points')}
+					{@render sortButton('points', 'Points', true)}
 				</Table.Head>
-				<Table.Head class={cn(HEAD, 'w-16 pe-4')}><span class="sr-only">Actions</span></Table.Head>
+				<Table.Head scope="col" class={cn(HEAD, 'w-16 pe-4')}><span class="sr-only">Actions</span></Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -242,7 +256,10 @@
 							</Menu.Trigger>
 							<Menu.Content align="end" class="min-w-48">
 								<Menu.Group>
-									<Menu.Item onSelect={() => onassign?.(t.id)}>
+									<Menu.Item onSelect={() => onedit?.(t.id)}>
+										<Icon name="edit" />Edit
+									</Menu.Item>
+									<Menu.Item onSelect={() => onassign?.(t.id)} disabled={t.assigneeId === ME.id}>
 										<Icon name="person" />Assign to me
 									</Menu.Item>
 									{#if t.status !== 'done'}

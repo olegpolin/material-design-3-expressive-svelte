@@ -5,9 +5,10 @@
 	import { cn } from '#lib/utils.js';
 
 	/**
-	 * Dashboard content card: elevated (surface-container-low, level 1), 28dp corners, 24dp padding,
-	 * title-large heading + body-medium description, optional trailing action. While `loading`, the
-	 * body is replaced by a centered M3 loading indicator (or the `skeleton` snippet when given).
+	 * Dashboard content card: elevated (surface-container-low, level 1), 28dp corners, 24dp padding
+	 * (16 on compact), a title-large `<h2>` + body-medium description, optional trailing action.
+	 * While `loading`, the body is replaced by a centered M3 loading indicator (or the `skeleton`
+	 * snippet when given) and the card is marked `aria-busy`.
 	 */
 	let {
 		title,
@@ -32,24 +33,19 @@
 		class?: string;
 		contentClass?: string;
 		children: Snippet;
-		[key: `aria-${string}`]: string | undefined;
 		id?: string;
 	} = $props();
-
-	const headingId = $props.id();
 </script>
 
 <Card.Root
 	{variant}
 	shape="xl"
 	class={cn('min-w-0 gap-4 [--card-spacing:--spacing(6)] max-[599px]:[--card-spacing:--spacing(4)]', className)}
-	aria-labelledby={headingId}
 	aria-busy={loading}
-	role="region"
 	{...restProps}
 >
 	<Card.Header class={cn(action && 'grid-cols-[1fr_auto]')}>
-		<Card.Title id={headingId} class="type-title-lg">{title}</Card.Title>
+		<Card.Title><h2 class="type-title-lg text-on-surface">{title}</h2></Card.Title>
 		{#if description}
 			<Card.Description>{description}</Card.Description>
 		{/if}

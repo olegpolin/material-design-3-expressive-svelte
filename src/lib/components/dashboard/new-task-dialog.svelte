@@ -8,13 +8,34 @@
 	import * as Select from '#lib/components/ui/select/index.js';
 	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { TextField } from '#lib/components/ui/text-field/index.js';
-	import { ME, PROJECT_NAMES, TEAM } from './data.js';
+	import { ME, PROJECT_NAMES, TEAM, type Task } from './data.js';
 
-	let { open = $bindable(false), onsave }: { open?: boolean; onsave: (t: NewTask) => void } = $props();
+	/**
+	 * Create / edit task dialog. `onsave` gets the form and, when editing, the task id.
+	 * Call `edit(task)` to open it prefilled; opening it any other way starts a blank task.
+	 */
+	let {
+		open = $bindable(false),
+		onsave
+	}: { open?: boolean; onsave: (t: NewTask, id?: string) => void } = $props();
 
 	const blank = (): NewTask => ({ title: '', description: '', project: PROJECT_NAMES[0], assigneeId: ME.id, urgent: false });
 	let form = $state<NewTask>(blank());
 	let touched = $state(false);
+	let editingId = $state<string | undefined>();
+
+	export function edit(t: Task) {
+		form = { title: t.title, description: '', project: t.project, assigneeId: t.assigneeId, urgent: t.priority === 'high' };
+		editingId = t.id;
+		touched = false;
+		open = true;
+	}
+
+	function reset() {
+		form = blank();
+		touched = false;
+		editingId = undefined;
+	}
 
 	const titleInvalid = $derived(touched && form.title.trim().length < 3);
 	const assigneeName = $derived(TEAM.find((m) => m.id === form.assigneeId)?.name ?? '');
@@ -23,19 +44,24 @@
 		e.preventDefault();
 		touched = true;
 		if (form.title.trim().length < 3) return;
-		onsave({ ...form, title: form.title.trim() });
+		onsave({ ...form, title: form.title.trim() }, editingId);
 		open = false;
-		form = blank();
-		touched = false;
 	}
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root
+	bind:open
+	onOpenChangeComplete={(o) => {
+		if (!o) reset();
+	}}
+>
 	<Dialog.Content class="w-[min(560px,calc(100vw-48px))]">
 		<form class="contents" onsubmit={submit} novalidate>
 			<Dialog.Header>
-				<Dialog.Title>New task</Dialog.Title>
-				<Dialog.Description>Add a task to one of the Orbit projects.</Dialog.Description>
+				<Dialog.Title>{editingId ? `Edit ${editingId}` : 'New task'}</Dialog.Title>
+				<Dialog.Description>
+					{editingId ? 'Update the title, project, assignee or priority.' : 'Add a task to one of the Orbit projects.'}
+				</Dialog.Description>
 			</Dialog.Header>
 			<Dialog.Body class="flex flex-col gap-4 pt-2">
 				<TextField
@@ -102,7 +128,7 @@
 				<Dialog.Close>
 					{#snippet child({ props })}<Button {...props} variant="text">Cancel</Button>{/snippet}
 				</Dialog.Close>
-				<Button type="submit" variant="filled">Create</Button>
+				<Button type="submit" variant="filled">{editingId ? 'Save' : 'Create'}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
