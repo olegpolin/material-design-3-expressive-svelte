@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import { Page, Section, Demo } from '#lib/components/showcase/index.js';
-	import { Button, type ButtonVariant } from '#lib/components/ui/button/index.js';
-	import { IconButton, type IconButtonVariant } from '#lib/components/ui/icon-button/index.js';
+	import { Button, type ButtonShape, type ButtonVariant } from '#lib/components/ui/button/index.js';
+	import { IconButton, type IconButtonShape, type IconButtonVariant } from '#lib/components/ui/icon-button/index.js';
 	import {
 		Fab,
 		ExtendedFab,
@@ -29,13 +29,19 @@
 	];
 	const TOGGLE_VARIANTS = VARIANTS.filter((v) => v.id !== 'text');
 
-	const BUTTON_SIZES: { id: Size; name: string; spec: string }[] = [
-		{ id: 'xs', name: 'Extra small', spec: 'Height 32dp · Pad 12dp · Icon 20dp · Gap 4dp · Label large · Corner full → pressed 8dp' },
-		{ id: 'sm', name: 'Small (default)', spec: 'Height 40dp · Pad 16dp · Icon 20dp · Gap 8dp · Label large · Corner full → pressed 8dp' },
-		{ id: 'md', name: 'Medium', spec: 'Height 56dp · Pad 24dp · Icon 24dp · Gap 8dp · Title medium · Corner full → pressed 12dp' },
-		{ id: 'lg', name: 'Large', spec: 'Height 96dp · Pad 48dp · Icon 32dp · Gap 12dp · Headline small · Outline 2dp · Corner full → pressed 16dp' },
-		{ id: 'xl', name: 'Extra large', spec: 'Height 136dp · Pad 64dp · Icon 40dp · Gap 16dp · Headline large · Outline 3dp · Corner full → pressed 16dp' }
+	type SizeSpec = { id: Size; name: string; spec: string; full: number; square: number; pressed: number };
+	const BUTTON_SIZES: SizeSpec[] = [
+		{ id: 'xs', name: 'Extra small', spec: 'Height 32dp · Pad 12dp · Icon 20dp · Gap 4dp · Label large · 48dp target', full: 16, square: 12, pressed: 8 },
+		{ id: 'sm', name: 'Small (default)', spec: 'Height 40dp · Pad 16dp · Icon 20dp · Gap 8dp · Label large · 48dp target', full: 20, square: 12, pressed: 8 },
+		{ id: 'md', name: 'Medium', spec: 'Height 56dp · Pad 24dp · Icon 24dp · Gap 8dp · Title medium', full: 28, square: 16, pressed: 12 },
+		{ id: 'lg', name: 'Large', spec: 'Height 96dp · Pad 48dp · Icon 32dp · Gap 12dp · Headline small · Outline 2dp', full: 48, square: 28, pressed: 16 },
+		{ id: 'xl', name: 'Extra large', spec: 'Height 136dp · Pad 64dp · Icon 40dp · Gap 16dp · Headline large · Outline 3dp', full: 68, square: 28, pressed: 16 }
 	];
+
+	/** "Corner full (20dp) → pressed 8dp" / "Corner 12dp → pressed 8dp" for the shape picked on the page. */
+	function cornerSpec(s: SizeSpec, shape: string) {
+		return `Corner ${shape === 'square' ? `${s.square}dp` : `full (${s.full}dp)`} → pressed ${s.pressed}dp`;
+	}
 
 	const ICON_VARIANTS: { id: NonNullable<IconButtonVariant>; name: string }[] = [
 		{ id: 'standard', name: 'Standard' },
@@ -44,12 +50,12 @@
 		{ id: 'outlined', name: 'Outlined' }
 	];
 	const WIDTHS = ['narrow', 'default', 'wide'] as const;
-	const ICON_SIZES: { id: Size; name: string; spec: string }[] = [
-		{ id: 'xs', name: 'Extra small', spec: 'Height 32dp · Icon 20dp · Width 28 / 32 / 40dp · Square 12dp · Pressed 8dp' },
-		{ id: 'sm', name: 'Small (default)', spec: 'Height 40dp · Icon 24dp · Width 32 / 40 / 52dp · Square 12dp · Pressed 8dp' },
-		{ id: 'md', name: 'Medium', spec: 'Height 56dp · Icon 24dp · Width 48 / 56 / 72dp · Square 16dp · Pressed 12dp' },
-		{ id: 'lg', name: 'Large', spec: 'Height 96dp · Icon 32dp · Width 64 / 96 / 128dp · Square 28dp · Pressed 16dp · Outline 2dp' },
-		{ id: 'xl', name: 'Extra large', spec: 'Height 136dp · Icon 40dp · Width 104 / 136 / 184dp · Square 28dp · Pressed 16dp · Outline 3dp' }
+	const ICON_SIZES: SizeSpec[] = [
+		{ id: 'xs', name: 'Extra small', spec: 'Height 32dp · Icon 20dp · Width 28 / 32 / 40dp · 48dp target', full: 16, square: 12, pressed: 8 },
+		{ id: 'sm', name: 'Small (default)', spec: 'Height 40dp · Icon 24dp · Width 32 / 40 / 52dp · 48dp target', full: 20, square: 12, pressed: 8 },
+		{ id: 'md', name: 'Medium', spec: 'Height 56dp · Icon 24dp · Width 48 / 56 / 72dp', full: 28, square: 16, pressed: 12 },
+		{ id: 'lg', name: 'Large', spec: 'Height 96dp · Icon 32dp · Width 64 / 96 / 128dp · Outline 2dp', full: 48, square: 28, pressed: 16 },
+		{ id: 'xl', name: 'Extra large', spec: 'Height 136dp · Icon 40dp · Width 104 / 136 / 184dp · Outline 3dp', full: 68, square: 28, pressed: 16 }
 	];
 
 	const FAB_COLORS: { id: FabColor; name: string }[] = [
@@ -113,8 +119,42 @@
 		'outlined-sq': true
 	});
 
+	/** Shape shown by the size matrices (switchable on the page). */
+	let buttonShape = $state('round');
+	let iconShape = $state('round');
+
 	let fabExtended = $state(true);
-	let menuOpen = $state<Record<FabMenuColor, boolean>>({ primary: false, secondary: false, tertiary: false });
+	let menuOpen = $state(false);
+	let menuColor = $state('primary');
+	let menuSize = $state('default');
+	const MENU_COLORS = [
+		{ value: 'primary', label: 'Primary' },
+		{ value: 'secondary', label: 'Secondary' },
+		{ value: 'tertiary', label: 'Tertiary' }
+	];
+	const MENU_SIZES = [
+		{ value: 'default', label: '56dp' },
+		{ value: 'medium', label: '80dp' },
+		{ value: 'large', label: '96dp' }
+	];
+	const SHAPES = [
+		{ value: 'round', label: 'Round', icon: 'circle' },
+		{ value: 'square', label: 'Square', icon: 'square' }
+	];
+	const MENU_FAB_SPEC: Record<string, string> = {
+		default: 'FAB 56dp, corner 16dp, icon 24dp',
+		medium: 'Medium FAB 80dp, corner 20dp, icon 28dp',
+		large: 'Large FAB 96dp, corner 28dp, icon 36dp'
+	};
+	const menuSpec = $derived(
+		`${MENU_FAB_SPEC[menuSize]} → close 56dp full, icon 20dp · ${menuColor}-container → ${menuColor} · Items 56dp, pad 24dp, gap 4dp, 8dp above close, title medium · Fast-spatial morph, slow-effects stagger`
+	);
+	const MENU_ITEMS = [
+		{ icon: 'mail', label: 'Email' },
+		{ icon: 'chat', label: 'Chat' },
+		{ icon: 'event', label: 'Event' },
+		{ icon: 'description', label: 'Document' }
+	];
 	let scrimMenuOpen = $state(false);
 	let lastMenuAction = $state('—');
 
@@ -144,31 +184,119 @@
 		enabled: '',
 		hovered: '',
 		focused: 'outline-3 outline-offset-2 outline-m3-secondary',
-		pressed: '[--btn-r:var(--btn-r-pressed)]'
+		pressed: '[--btn-r:var(--btn-r-pressed)]',
+		disabled: ''
+	} as const;
+	/** FAB elevation per state: level 3, hover level 4 (buttons.md §3.3). FABs have no disabled state. */
+	const FAB_STATE_CLASSES = {
+		enabled: '',
+		hovered: 'shadow-m3-4',
+		focused: 'outline-3 outline-offset-2 outline-m3-secondary',
+		pressed: '',
+		disabled: ''
 	} as const;
 	const STATES = ['enabled', 'hovered', 'focused', 'pressed', 'disabled'] as const;
+	type StateName = (typeof STATES)[number];
+	type StateKind = 'button' | 'icon' | 'fab';
+	type StateRow = { kind: StateKind; variant: string; name: string };
+	const BUTTON_STATE_ROWS: StateRow[] = [
+		{ kind: 'button', variant: 'filled', name: 'Filled' },
+		{ kind: 'button', variant: 'tonal', name: 'Tonal' },
+		{ kind: 'button', variant: 'outlined', name: 'Outlined' },
+		{ kind: 'button', variant: 'elevated', name: 'Elevated' },
+		{ kind: 'button', variant: 'text', name: 'Text' }
+	];
+	const ICON_STATE_ROWS: StateRow[] = [
+		{ kind: 'icon', variant: 'filled', name: 'Filled' },
+		{ kind: 'icon', variant: 'tonal', name: 'Tonal' },
+		{ kind: 'icon', variant: 'outlined', name: 'Outlined' },
+		{ kind: 'icon', variant: 'standard', name: 'Standard' }
+	];
+	const FAB_STATE_ROWS: StateRow[] = [
+		{ kind: 'fab', variant: 'primary-container', name: 'Primary container' },
+		{ kind: 'fab', variant: 'tertiary', name: 'Tertiary' }
+	];
 </script>
 
 <svelte:head>
 	<title>Actions · M3 Expressive</title>
 </svelte:head>
 
-{#snippet stateRow(variant: ButtonVariant)}
-	<div class="flex flex-wrap items-center gap-4">
-		{#each STATES as state (state)}
-			<div class="flex flex-col items-center gap-2">
-				{#if state === 'disabled'}
-					<Button {variant} disabled>Label</Button>
-				{:else if state === 'enabled'}
-					<Button {variant}>Label</Button>
-				{:else}
-					<span class="inline-flex" {@attach simulate(state)}>
-						<Button {variant} class={STATE_CLASSES[state]} tabindex={-1}>Label</Button>
-					</span>
+{#snippet stateControl(kind: StateKind, variant: string, state: StateName)}
+	{@const tabindex = state === 'enabled' || state === 'disabled' ? undefined : -1}
+	{#if kind === 'button'}
+		<Button
+			variant={variant as ButtonVariant}
+			disabled={state === 'disabled'}
+			class={STATE_CLASSES[state]}
+			{tabindex}
+		>
+			Label
+		</Button>
+	{:else if kind === 'icon'}
+		<IconButton
+			variant={variant as IconButtonVariant}
+			icon="favorite"
+			disabled={state === 'disabled'}
+			class={STATE_CLASSES[state]}
+			{tabindex}
+			aria-label="{variant} icon button, {state}"
+		/>
+	{:else}
+		<Fab
+			color={variant as FabColor}
+			icon="edit"
+			class={FAB_STATE_CLASSES[state]}
+			{tabindex}
+			aria-label="FAB, {state}"
+		/>
+	{/if}
+{/snippet}
+
+{#snippet stateRows(rows: StateRow[])}
+	{#each rows as row (row.variant)}
+		<div class="flex flex-wrap items-end gap-x-4 gap-y-3">
+			<span class="w-20 self-center type-label-md text-on-surface-variant">{row.name}</span>
+			{#each STATES as state (state)}
+				{#if !(row.kind === 'fab' && state === 'disabled')}
+					<div class="flex min-w-16 flex-col items-center gap-2">
+						{#if state === 'enabled' || state === 'disabled'}
+							{@render stateControl(row.kind, row.variant, state)}
+						{:else}
+							<span class="inline-flex" {@attach simulate(state)}>
+								{@render stateControl(row.kind, row.variant, state)}
+							</span>
+						{/if}
+						<span class="type-label-sm text-on-surface-variant">{state}</span>
+					</div>
 				{/if}
-				<span class="type-label-sm text-on-surface-variant">{state}</span>
-			</div>
-		{/each}
+			{/each}
+		</div>
+	{/each}
+{/snippet}
+
+{#snippet picker(
+	label: string,
+	options: { value: string; label: string; icon?: string }[],
+	value: string,
+	onchange: (v: string) => void
+)}
+	<div class="flex flex-wrap items-center gap-3">
+		<span class="type-label-lg text-on-surface-variant">{label}</span>
+		<ButtonGroup
+			variant="connected"
+			size="xs"
+			type="single"
+			required
+			itemVariant="tonal"
+			class="w-auto"
+			aria-label={label}
+			bind:value={() => value, (v) => onchange(v as string)}
+		>
+			{#each options as o (o.value)}
+				<ButtonGroupItem value={o.value} icon={o.icon}>{o.label}</ButtonGroupItem>
+			{/each}
+		</ButtonGroup>
 	</div>
 {/snippet}
 
@@ -216,10 +344,12 @@
 			{/each}
 		</Demo>
 
+		<div class="px-2">{@render picker('Shape of the size rows', SHAPES, buttonShape, (v) => (buttonShape = v))}</div>
+
 		{#each BUTTON_SIZES as s (s.id)}
-			<Demo label={s.name} spec={s.spec}>
+			<Demo label={s.name} spec="{s.spec} · {cornerSpec(s, buttonShape)}" class="overflow-x-auto">
 				{#each VARIANTS as v (v.id)}
-					<Button variant={v.id} size={s.id}>
+					<Button variant={v.id} size={s.id} shape={buttonShape as ButtonShape}>
 						<Icon name="add" data-icon="inline-start" />
 						{v.name}
 					</Button>
@@ -227,7 +357,11 @@
 			</Demo>
 		{/each}
 
-		<Demo label="Round vs square" spec="Square 12 / 12 / 16 / 28 / 28dp · Pressed 8 / 8 / 12 / 16 / 16dp (both shapes)">
+		<Demo
+			label="Round vs square"
+			spec="Square 12 / 12 / 16 / 28 / 28dp · Pressed 8 / 8 / 12 / 16 / 16dp (both shapes)"
+			class="overflow-x-auto"
+		>
 			{#each BUTTON_SIZES.slice(0, 4) as s (s.id)}
 				<div class="flex items-center gap-2">
 					<Button size={s.id} variant="tonal">Round</Button>
@@ -263,7 +397,11 @@
 			{/each}
 		</Demo>
 
-		<Demo label="Toggle sizes" spec="Selected corner 12 / 12 / 16 / 28 / 28dp (round) · full (square)">
+		<Demo
+			label="Toggle sizes"
+			spec="Selected corner 12 / 12 / 16 / 28 / 28dp (round) · full (square)"
+			class="overflow-x-auto"
+		>
 			{#each BUTTON_SIZES.slice(0, 4) as s (s.id)}
 				<Button variant="tonal" size={s.id} toggle bind:pressed={sizeToggles[s.id]}>
 					<Icon name="check" data-icon="inline-start" />
@@ -272,7 +410,7 @@
 			{/each}
 		</Demo>
 
-		<Demo label="Extra large toggle" spec="Height 136dp · Selected corner 28dp">
+		<Demo label="Extra large toggle" spec="Height 136dp · Selected corner 28dp" class="overflow-x-auto">
 			<Button variant="filled" size="xl" toggle bind:pressed={sizeToggles.xl}>
 				<Icon name="favorite" data-icon="inline-start" />
 				Favorite
@@ -288,13 +426,10 @@
 
 		<Demo
 			label="States"
-			spec="State layer in the content color: hover 8% · focus 10% + 3dp secondary ring at 2dp · pressed 10% · disabled none"
-			class="flex-col items-start"
+			spec="State layer in the content color: hover 8% · focus 10% + 3dp secondary ring at 2dp · pressed 10% + pressed corner · disabled none"
+			class="flex-col items-start overflow-x-auto"
 		>
-			{@render stateRow('filled')}
-			{@render stateRow('tonal')}
-			{@render stateRow('outlined')}
-			{@render stateRow('text')}
+			{@render stateRows(BUTTON_STATE_ROWS)}
 			<p class="type-body-sm text-on-surface-variant">
 				Hover, focus and pressed are simulated here; hover, Tab to and press the live buttons above to see them for real.
 			</p>
@@ -306,8 +441,10 @@
 		title="Icon buttons"
 		description="Four color styles, five sizes, three widths and two shapes. Toggle icon buttons switch to a filled icon when selected."
 	>
+		<div class="px-2">{@render picker('Shape of the size rows', SHAPES, iconShape, (v) => (iconShape = v))}</div>
+
 		{#each ICON_SIZES as s (s.id)}
-			<Demo label={s.name} spec={s.spec}>
+			<Demo label={s.name} spec="{s.spec} · {cornerSpec(s, iconShape)}" class="overflow-x-auto">
 				{#each WIDTHS as w (w)}
 					<div class="flex flex-wrap items-center gap-2">
 						{#each ICON_VARIANTS as v (v.id)}
@@ -315,6 +452,7 @@
 								variant={v.id}
 								size={s.id}
 								width={w}
+								shape={iconShape as IconButtonShape}
 								icon="settings"
 								aria-label="{v.name} {w} settings"
 							/>
@@ -365,6 +503,14 @@
 			{/each}
 			<IconButton variant="outlined" toggle pressed icon="delete" disabled aria-label="Outlined selected disabled" />
 		</Demo>
+
+		<Demo
+			label="States"
+			spec="State layer in the icon color: hover 8% · focus 10% + 3dp secondary ring at 2dp · pressed 10% (8dp corner) · disabled none"
+			class="flex-col items-start overflow-x-auto"
+		>
+			{@render stateRows(ICON_STATE_ROWS)}
+		</Demo>
 	</Section>
 
 	<!-- ================================================================== FAB -->
@@ -386,6 +532,14 @@
 			<Fab color="surface" size="large" icon="edit" aria-label="Large surface FAB" />
 		</Demo>
 
+		<Demo
+			label="States"
+			spec="Elevation 3 at rest, focus and press · hover 4 · state layer in the icon color 8 / 10 / 10%"
+			class="flex-col items-start overflow-x-auto"
+		>
+			{@render stateRows(FAB_STATE_ROWS)}
+		</Demo>
+
 		{#each EXTENDED_SIZES as s (s.id)}
 			<Demo label={s.name} spec={s.spec}>
 				<ExtendedFab size={s.id} icon="edit" label="Compose" />
@@ -400,7 +554,7 @@
 			class="flex-col items-start"
 		>
 			<Button variant="tonal" size="xs" toggle bind:pressed={() => !fabExtended, (v) => (fabExtended = !v)}>
-				<Icon name="unfold_less" data-icon="inline-start" />
+				<Icon name={fabExtended ? 'unfold_less' : 'unfold_more'} data-icon="inline-start" />
 				{fabExtended ? 'Collapse' : 'Expand'}
 			</Button>
 			<div class="flex flex-wrap items-center gap-4">
@@ -417,27 +571,36 @@
 		description="The FAB morphs into a 56dp round close button anchored at its top-trailing corner; items reveal bottom-up from the trailing edge. Esc or a click outside closes it."
 	>
 		<Demo
-			label="Color sets"
-			spec="Close 56dp full · Icon 24 → 20dp · Items 56dp, pad 24dp, gap 4dp, 8dp above close · Title medium · Fast-spatial morph, slow-effects stagger"
-			class="min-h-[440px] items-end justify-around"
+			label="Color sets and FAB sizes"
+			spec={menuSpec}
+			class="relative min-h-[560px] flex-col items-start sm:min-h-[460px]"
 		>
-			{#each [{ c: 'primary', size: 'default' }, { c: 'secondary', size: 'medium' }, { c: 'tertiary', size: 'large' }] as const as m (m.c)}
-				<div class="flex flex-col items-center gap-3">
-					<FabMenu color={m.c} size={m.size} bind:open={menuOpen[m.c]} label="Create ({m.c})">
-						<FabMenuItem icon="mail" label="Email" onclick={() => (lastMenuAction = `${m.c}: Email`)} />
-						<FabMenuItem icon="chat" label="Chat" onclick={() => (lastMenuAction = `${m.c}: Chat`)} />
-						<FabMenuItem icon="event" label="Event" onclick={() => (lastMenuAction = `${m.c}: Event`)} />
-						<FabMenuItem icon="description" label="Document" onclick={() => (lastMenuAction = `${m.c}: Document`)} />
-					</FabMenu>
-					<span class="type-label-sm text-on-surface-variant">{m.c} · {m.size === 'default' ? '56' : m.size === 'medium' ? '80' : '96'}dp FAB</span>
-				</div>
-			{/each}
-		</Demo>
-		<Demo label="With scrim" spec="Scrim at 32% · 6 items maximum" class="min-h-[520px] items-end justify-between">
-			<p class="type-body-md max-w-64 self-start text-on-surface-variant">
+			{@render picker('Color set', MENU_COLORS, menuColor, (v) => (menuColor = v))}
+			{@render picker('FAB size', MENU_SIZES, menuSize, (v) => (menuSize = v))}
+			<p class="type-body-md max-w-64 text-on-surface-variant">
 				Last action: <span class="type-label-lg text-on-surface">{lastMenuAction}</span>
 			</p>
-			<FabMenu color="primary" size="medium" scrim bind:open={scrimMenuOpen} icon="edit" label="Edit">
+			<FabMenu
+				color={menuColor as FabMenuColor}
+				size={menuSize as 'default' | 'medium' | 'large'}
+				bind:open={menuOpen}
+				label="Create"
+				class="absolute end-6 bottom-6"
+			>
+				{#each MENU_ITEMS as item (item.label)}
+					<FabMenuItem
+						icon={item.icon}
+						label={item.label}
+						onclick={() => (lastMenuAction = `${item.label} (${menuColor})`)}
+					/>
+				{/each}
+			</FabMenu>
+		</Demo>
+		<Demo label="With scrim" spec="Scrim at 32% · 6 items maximum · 80dp FAB" class="relative min-h-[520px] items-start">
+			<p class="type-body-md max-w-64 text-on-surface-variant">
+				Last action: <span class="type-label-lg text-on-surface">{lastMenuAction}</span>
+			</p>
+			<FabMenu class="absolute end-6 bottom-6" color="primary" size="medium" scrim bind:open={scrimMenuOpen} icon="edit" label="Edit">
 				<FabMenuItem icon="photo" label="Photo" onclick={() => (lastMenuAction = 'Photo')} />
 				<FabMenuItem icon="videocam" label="Video" onclick={() => (lastMenuAction = 'Video')} />
 				<FabMenuItem icon="mic" label="Voice note" onclick={() => (lastMenuAction = 'Voice note')} />
@@ -454,7 +617,7 @@
 		description="Standard groups keep a gap and squeeze: the pressed button grows 15% and its neighbours give the space up (fast-spatial). Connected groups replace segmented buttons: 2dp apart, only the pressed or selected button changes shape."
 	>
 		{#each SIZES as size (size)}
-			<Demo label="Standard · {SIZE_NAMES[size]}" spec={GROUP_SPECS[size].standard}>
+			<Demo label="Standard · {SIZE_NAMES[size]}" spec={GROUP_SPECS[size].standard} class="overflow-x-auto">
 				<ButtonGroup {size} itemVariant="tonal">
 					<ButtonGroupItem icon="arrow_back" aria-label="Back" />
 					<ButtonGroupItem variant="filled">Primary action</ButtonGroupItem>
@@ -484,7 +647,7 @@
 		</Demo>
 
 		{#each SIZES as size (size)}
-			<Demo label="Connected · {SIZE_NAMES[size]} · single select" spec={GROUP_SPECS[size].connected}>
+			<Demo label="Connected · {SIZE_NAMES[size]} · single select" spec={GROUP_SPECS[size].connected} class="overflow-x-auto">
 				<ButtonGroup variant="connected" {size} type="single" required itemVariant="tonal" bind:value={connectedSelection[size]}>
 					<ButtonGroupItem value="list" icon="view_list">List</ButtonGroupItem>
 					<ButtonGroupItem value="grid" icon="grid_view">Grid</ButtonGroupItem>
@@ -524,7 +687,7 @@
 			{@render split('elevated', 'sm', 'Edit')}
 		</Demo>
 		{#each SIZES as size (size)}
-			<Demo label={SIZE_NAMES[size]} spec={SPLIT_SPECS[size]}>
+			<Demo label={SIZE_NAMES[size]} spec={SPLIT_SPECS[size]} class="overflow-x-auto">
 				{@render split(size === 'sm' ? 'tonal' : 'filled', size, 'Edit')}
 			</Demo>
 		{/each}

@@ -34,6 +34,8 @@
 			class={cn(
 				"group/segment relative -ms-px inline-flex h-10 min-w-12 cursor-pointer items-center justify-center px-3 whitespace-nowrap select-none type-label-lg first:ms-0",
 				"border border-outline text-on-surface first:rounded-s-full last:rounded-e-full",
+				// 48dp touch target (the segment is only 40dp high)
+				"after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2 after:content-['']",
 				"transition-[background-color,color] duration-spring-default-effects ease-spring-default-effects",
 				"data-[state=on]:z-[1] data-[state=on]:bg-secondary-container data-[state=on]:text-on-secondary-container focus-visible:z-[2]",
 				"disabled:pointer-events-none disabled:border-on-surface/12 disabled:text-on-surface/38 disabled:data-[state=on]:bg-on-surface/12",

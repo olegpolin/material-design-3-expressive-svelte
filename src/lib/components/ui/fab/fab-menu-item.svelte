@@ -52,10 +52,13 @@
 		"relative inline-flex h-14 min-w-14 shrink-0 cursor-pointer items-center gap-2 rounded-m3-full px-6 whitespace-nowrap select-none type-title-md",
 		"[transition:clip-path_var(--md-sys-motion-spring-fast-spatial-duration)_var(--md-sys-motion-spring-fast-spatial-easing),opacity_var(--md-sys-motion-spring-fast-effects-duration)_var(--md-sys-motion-spring-fast-effects-easing)]",
 		"[&_[data-slot=icon]]:[--m3-icon-size:24px]!",
+		// reveal grows out of the trailing edge (mirrored in RTL); -5px keeps the focus ring visible
+		visible
+			? "[clip-path:inset(-5px_round_33px)]"
+			: "[clip-path:inset(-5px_-5px_-5px_100%_round_33px)] rtl:[clip-path:inset(-5px_100%_-5px_-5px_round_33px)]",
 		FAB_MENU_ITEM_COLORS[ctx.color],
 		className
 	)}
-	style:clip-path={visible ? "inset(-5px round 33px)" : "inset(-5px -5px -5px 100% round 33px)"}
 	style:opacity={visible ? 1 : 0}
 	onclick={handleClick}
 	{...restProps}

@@ -53,7 +53,7 @@
 >
 	<span
 		data-motion-scheme="standard"
-		class="inline-flex translate-x-(--sb-offset) transition-[translate,rotate] duration-spring-fast-spatial ease-spring-fast-spatial group-aria-expanded/trailing:translate-x-0 group-aria-expanded/trailing:rotate-180"
+		class="inline-flex translate-x-(--sb-offset) rtl:-translate-x-(--sb-offset) transition-[translate,rotate] duration-spring-fast-spatial ease-spring-fast-spatial group-aria-expanded/trailing:translate-x-0 group-aria-expanded/trailing:rotate-180"
 	>
 		<Icon name={icon} />
 	</span>
