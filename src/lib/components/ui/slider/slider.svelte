@@ -25,7 +25,15 @@
 
 	type BaseProps = Omit<
 		SliderPrimitive.RootProps,
-		"type" | "value" | "onValueChange" | "onValueCommit" | "children" | "child" | "thumbPositioning" | "trackPadding"
+		| "type"
+		| "value"
+		| "onValueChange"
+		| "onValueCommit"
+		| "children"
+		| "child"
+		| "thumbPositioning"
+		| "trackPadding"
+		| "dir"
 	>;
 
 	/**
@@ -33,7 +41,10 @@
 	 * 4dp handle (2dp while pressed / dragged / focused), 6dp gap on each side, track split into
 	 * active / inactive segments (2dp inner corners, per-size outer corners), 4dp stop indicators,
 	 * value indicator 48×44dp 12dp above the handle. Sizes xs–xl, standard / centered / range,
-	 * discrete stops, horizontal / vertical.
+	 * discrete stops, horizontal / vertical, RTL (auto-detected from the inherited `direction`).
+	 * `aria-label` / `aria-labelledby` name the handle(s) (the root has no role); range handles get
+	 * `thumbLabels` or "<label>, start" / "<label>, end". Keys: arrows, Home / End, PageUp / PageDown
+	 * (10% of the range).
 	 */
 	let {
 		ref = $bindable(null),
@@ -49,6 +60,10 @@
 		format = defaultFormat,
 		orientation = "horizontal",
 		disabled = false,
+		dir,
+		thumbLabels,
+		"aria-label": ariaLabel,
+		"aria-labelledby": ariaLabelledby,
 		onValueChange,
 		onValueCommit,
 		class: className,
@@ -67,6 +82,12 @@
 		/** Show the value label above the handle while pressed, dragged or keyboard-focused. */
 		valueIndicator?: boolean;
 		format?: (value: number) => string;
+		/** Reading direction for horizontal sliders. Default: the inherited CSS `direction`. */
+		dir?: "ltr" | "rtl";
+		/** Accessible names per handle (range sliders). */
+		thumbLabels?: string[];
+		"aria-label"?: string;
+		"aria-labelledby"?: string;
 		onValueChange?: (value: number & number[]) => void;
 		onValueCommit?: (value: number & number[]) => void;
 	} = $props();
@@ -81,13 +102,61 @@
 	});
 
 	let railSize = $state(0);
+
+	// Horizontal sliders follow the page direction unless `dir` is set; vertical ones always grow
+	// bottom → top (bits-ui would flip a vertical `rtl` slider to top → bottom).
+	let inheritedDir = $state<"ltr" | "rtl">("ltr");
+	const detectDir = (node: HTMLElement) => {
+		inheritedDir = getComputedStyle(node).direction === "rtl" ? "rtl" : "ltr";
+	};
+	let rtl = $derived(!vertical && (dir ?? inheritedDir) === "rtl");
+
+	function thumbLabel(index: number) {
+		if (thumbLabels?.[index]) return thumbLabels[index];
+		if (!ariaLabel || !multiple) return ariaLabel;
+		return `${ariaLabel}, ${index === 0 ? "start" : "end"}`;
+	}
+
+	const snapToStep = (v: number) => {
+		const snapped = step > 0 ? min + Math.round((v - min) / step) * step : v;
+		// trim float noise (0.1 + 0.2) to the step's precision
+		const decimals = (String(step).split(".")[1] ?? "").length;
+		return Math.min(max, Math.max(min, Number(snapped.toFixed(decimals))));
+	};
+
+	// PageUp / PageDown: ±10% of the range (bits-ui only handles arrows and Home / End).
+	function onPageKey(e: KeyboardEvent) {
+		if (disabled || (e.key !== "PageUp" && e.key !== "PageDown")) return;
+		const rail = e.currentTarget as HTMLElement;
+		const thumbs = [...rail.querySelectorAll<HTMLElement>("[role=slider]")];
+		const index = thumbs.indexOf(e.target as HTMLElement);
+		if (index < 0) return;
+		e.preventDefault();
+		const big = Math.max(step, Math.round((max - min) / 10 / step) * step);
+		const current = values[index] ?? min;
+		let next = snapToStep(current + (e.key === "PageUp" ? big : -big));
+		if (multiple) {
+			// keep range handles from crossing
+			next = Math.min(values[index + 1] ?? max, Math.max(values[index - 1] ?? min, next));
+			const arr = [...values];
+			arr[index] = next;
+			value = arr;
+		} else {
+			value = next;
+		}
+		onValueChange?.(value as number & number[]);
+		onValueCommit?.(value as number & number[]);
+	}
 	// bits-ui focuses the thumb programmatically on pointerdown, which Chrome reports as
 	// :focus-visible. Track pointer-initiated focus so only keyboard focus shows the ring,
 	// the 2dp handle and the value indicator (a key press on the thumb shows them again).
 	let pointerFocus = $state(false);
 	const railHandlers = {
 		onpointerdown: () => (pointerFocus = true),
-		onkeydown: () => (pointerFocus = false),
+		onkeydown: (e: KeyboardEvent) => {
+			pointerFocus = false;
+			onPageKey(e);
+		},
 		onfocusout: (e: FocusEvent) => {
 			const rail = e.currentTarget as HTMLElement;
 			if (!(e.relatedTarget instanceof Node && rail.contains(e.relatedTarget))) pointerFocus = false;
@@ -169,7 +238,9 @@
 	data-size={size}
 	data-orientation={orientation}
 	data-disabled={disabled || undefined}
+	data-rtl={rtl || undefined}
 	class={cn("m3-slider", vertical ? "inline-block h-60" : "block w-full", className)}
+	{@attach detectDir}
 	style:--_track="{dims.track}px"
 	style:--_handle="{dims.handle}px"
 	style:--_corner="{dims.corner}px"
@@ -184,6 +255,7 @@
 		{step}
 		{orientation}
 		{disabled}
+		dir={rtl ? "rtl" : "ltr"}
 		thumbPositioning="exact"
 		onValueChange={onValueChange as never}
 		onValueCommit={onValueCommit as never}
@@ -232,7 +304,12 @@
 		></span>
 	{/each}
 	{#each thumbItems as thumb (thumb.index)}
-		<SliderPrimitive.Thumb index={thumb.index}>
+		<SliderPrimitive.Thumb
+			index={thumb.index}
+			aria-label={thumbLabel(thumb.index)}
+			aria-labelledby={ariaLabelledby}
+			aria-valuetext={format(thumb.value)}
+		>
 			{#snippet child({ props })}
 				<span {...props} class="handle" data-slot="slider-thumb">
 					{#if valueIndicator}
@@ -319,6 +396,12 @@
 	.segment[data-active] {
 		background-color: var(--_active);
 	}
+	/* RTL: the start of the range is on the right (bits-ui positions the thumbs with `right`) */
+	.m3-slider[data-rtl] .segment {
+		left: var(--_e);
+		right: var(--_s);
+		border-radius: var(--_re) var(--_rs) var(--_rs) var(--_re);
+	}
 	.m3-slider[data-orientation="vertical"] .segment {
 		top: var(--_e);
 		bottom: var(--_s);
@@ -345,6 +428,11 @@
 	.stop[data-active] {
 		background-color: var(--_stop-active);
 	}
+	.m3-slider[data-rtl] .stop {
+		left: auto;
+		right: var(--_p);
+		translate: 50% -50%;
+	}
 	.m3-slider[data-orientation="vertical"] .stop {
 		top: auto;
 		bottom: var(--_p);
@@ -370,14 +458,21 @@
 	}
 	/* pressed / dragged / focused: 2dp, instant (Compose and MDC don't animate it) */
 	.handle[data-active],
-	.rail:not([data-pointer-focus]) .handle:focus-visible {
+	.rail:not([data-pointer-focus]) .handle:focus-visible,
+	.rail:is([data-preview="pressed"], [data-preview="focus"]) .handle {
 		width: 2px;
+	}
+	/* the dragged handle (and its value indicator) paints above the other range handle */
+	.handle[data-active],
+	.handle:focus-visible {
+		z-index: 1;
 	}
 	.rail[data-pointer-focus] .handle:focus-visible {
 		outline: none;
 	}
 	.m3-slider[data-orientation="vertical"] .handle[data-active],
-	.m3-slider[data-orientation="vertical"] .rail:not([data-pointer-focus]) .handle:focus-visible {
+	.m3-slider[data-orientation="vertical"] .rail:not([data-pointer-focus]) .handle:focus-visible,
+	.m3-slider[data-orientation="vertical"] .rail:is([data-preview="pressed"], [data-preview="focus"]) .handle {
 		width: 100%;
 		height: 2px;
 	}
@@ -422,7 +517,8 @@
 		transform-origin: right center;
 	}
 	.handle[data-active] .value-indicator,
-	.rail:not([data-pointer-focus]) .handle:focus-visible .value-indicator {
+	.rail:not([data-pointer-focus]) .handle:focus-visible .value-indicator,
+	.rail:is([data-preview="pressed"], [data-preview="focus"]) .handle:last-child .value-indicator {
 		opacity: 1;
 		scale: 1;
 		/* enter: medium4 (400ms) emphasized */

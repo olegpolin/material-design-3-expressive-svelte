@@ -54,18 +54,18 @@
 		inset: -4px;
 		border-radius: inherit;
 	}
-	.m3-radio:is(:hover, :focus-visible, :active) {
+	.m3-radio:is(:hover, :focus-visible, :active, [data-preview]) {
 		--_icon: var(--md-sys-color-on-surface);
 	}
 	/* Pressed layer previews the next state: unselected → primary, selected → on-surface */
-	.m3-radio:active {
+	.m3-radio:is(:active, [data-preview="pressed"]) {
 		color: var(--md-sys-color-primary);
 	}
 	.m3-radio[data-state="checked"] {
 		--_icon: var(--md-sys-color-primary);
 		color: var(--md-sys-color-primary);
 	}
-	.m3-radio[data-state="checked"]:active {
+	.m3-radio[data-state="checked"]:is(:active, [data-preview="pressed"]) {
 		color: var(--md-sys-color-on-surface);
 	}
 	.m3-radio:is(:disabled, [data-disabled]) {
@@ -94,13 +94,21 @@
 		transform-box: fill-box;
 		transform-origin: center;
 		scale: 0;
+		/* Shrink without overshoot: a spring past 0 would flip the dot into a negative scale and
+		   flash a tiny mirrored dot (Compose clamps the radius at 0). */
 		transition:
-			scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing),
+			scale var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing),
 			fill var(--md-sys-motion-spring-default-effects-duration)
 				var(--md-sys-motion-spring-default-effects-easing);
 	}
 	.m3-radio[data-state="checked"] .dot {
 		scale: 1;
+		/* Grow: fast-spatial (expressive overshoot) */
+		transition-property: scale, fill;
+		transition-duration: var(--md-sys-motion-spring-fast-spatial-duration),
+			var(--md-sys-motion-spring-default-effects-duration);
+		transition-timing-function: var(--md-sys-motion-spring-fast-spatial-easing),
+			var(--md-sys-motion-spring-default-effects-easing);
 	}
 	/* Disabled snaps (Compose) */
 	.m3-radio:is(:disabled, [data-disabled]) :is(.ring, .dot) {

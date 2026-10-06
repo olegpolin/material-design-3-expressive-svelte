@@ -68,30 +68,30 @@
 		border-radius: inherit;
 	}
 
-	.m3-checkbox:is(:hover, :focus-visible, :active) {
+	.m3-checkbox:is(:hover, :focus-visible, :active, [data-preview]) {
 		--_outline: var(--md-sys-color-on-surface);
 	}
 	/* Pressed state layer previews the next state (unselected → primary, selected → on-surface). */
-	.m3-checkbox:active {
+	.m3-checkbox:is(:active, [data-preview="pressed"]) {
 		color: var(--md-sys-color-primary);
 	}
 	.m3-checkbox:is([data-state="checked"], [data-state="indeterminate"]) {
 		color: var(--md-sys-color-primary);
 	}
-	.m3-checkbox:is([data-state="checked"], [data-state="indeterminate"]):active {
+	.m3-checkbox:is([data-state="checked"], [data-state="indeterminate"]):is(:active, [data-preview="pressed"]) {
 		color: var(--md-sys-color-on-surface);
 	}
 
-	/* Error (all states) */
-	.m3-checkbox:is([aria-invalid="true"], [aria-invalid=""]) {
+	/* Error (all states, including pressed). The doubled class outranks the pressed swap above. */
+	.m3-checkbox.m3-checkbox:is([aria-invalid="true"], [aria-invalid=""]) {
 		--_outline: var(--md-sys-color-error);
 		--_container: var(--md-sys-color-error);
 		--_icon: var(--md-sys-color-on-error);
 		color: var(--md-sys-color-error);
 	}
 
-	/* Disabled */
-	.m3-checkbox:is(:disabled, [data-disabled]) {
+	/* Disabled (wins over error) */
+	.m3-checkbox.m3-checkbox:is(:disabled, [data-disabled]) {
 		--_outline: color-mix(
 			in srgb,
 			var(--md-sys-color-on-surface) calc(var(--md-sys-state-disabled-content-opacity) * 100%),

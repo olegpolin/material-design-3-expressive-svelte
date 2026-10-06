@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-	import type { Snippet } from "svelte";
+	import { tick, type Snippet } from "svelte";
 	import type { HTMLAnchorAttributes, HTMLButtonAttributes } from "svelte/elements";
 	import { Toggle as TogglePrimitive } from "bits-ui";
 	import { Icon } from "#lib/components/ui/icon/index.js";
@@ -77,11 +77,28 @@
 		"data-morph": morph || undefined,
 	});
 
-	function onPrimaryKeydown(e: KeyboardEvent) {
-		if (isInput && removable && !disabled && (e.key === "Backspace" || e.key === "Delete")) {
-			e.preventDefault();
-			onremove?.();
-		}
+	// Static state preview for showcases (`data-preview="hover|focus|pressed"`); on input chips the
+	// host carries it so the chip-level styles apply.
+	let preview = $derived((restProps as Record<string, unknown>)["data-preview"] as string | undefined);
+
+	/** The element keyboard focus should land on inside a chip root. */
+	const focusTarget = (chip: Element) =>
+		(chip.matches("button, a[href]") ? chip : chip.querySelector(".primary")) as HTMLElement | null;
+
+	async function onPrimaryKeydown(e: KeyboardEvent) {
+		if (!(isInput && removable && !disabled && (e.key === "Backspace" || e.key === "Delete"))) return;
+		e.preventDefault();
+		// Keep keyboard focus in the set: Backspace moves to the previous chip, Delete to the next.
+		const parent = ref?.parentElement;
+		const chips = parent ? [...parent.children].filter((c) => c.matches("[data-slot=chip]")) : [];
+		const i = ref ? chips.indexOf(ref) : -1;
+		const before = chips.slice(0, Math.max(0, i)).reverse();
+		const after = i < 0 ? [] : chips.slice(i + 1);
+		const order = e.key === "Backspace" ? [...before, ...after] : [...after, ...before];
+		const next = order.map(focusTarget).find((t) => t && !t.matches(":disabled"));
+		onremove?.();
+		await tick();
+		if (next?.isConnected) next.focus();
 	}
 
 	function remove(e: MouseEvent) {
@@ -126,6 +143,7 @@
 	<span
 		bind:this={ref}
 		{...rootAttrs}
+		data-preview={preview}
 		data-disabled={disabled || undefined}
 		class={cn("m3-chip", className)}
 		{@attach ripple()}
@@ -135,8 +153,11 @@
 			class="primary"
 			{disabled}
 			aria-pressed={selected ? "true" : undefined}
-			onkeydown={onPrimaryKeydown}
 			{...restProps as HTMLButtonAttributes}
+			onkeydown={(e) => {
+				(restProps as HTMLButtonAttributes).onkeydown?.(e as never);
+				if (!e.defaultPrevented) onPrimaryKeydown(e);
+			}}
 		>
 			{@render content()}
 		</button>
@@ -244,17 +265,21 @@
 	.m3-chip:is([data-variant="filter"], [data-variant="input"]) {
 		--_outline: var(--md-sys-color-outline-variant);
 	}
-	.m3-chip:is([data-variant="filter"], [data-variant="input"]):is(:focus-visible, :has(.primary:focus-visible)) {
+	.m3-chip:is([data-variant="filter"], [data-variant="input"]):is(
+			:focus-visible,
+			:has(.primary:focus-visible),
+			[data-preview="focus"]
+		) {
 		--_outline: var(--md-sys-color-on-surface-variant);
 	}
 	.m3-chip[data-variant="input"] {
 		--_leading: var(--md-sys-color-on-surface-variant);
 	}
-	.m3-chip[data-variant="input"]:is(:hover, :has(.primary:focus-visible), :active) {
+	.m3-chip[data-variant="input"]:is(:hover, :has(.primary:focus-visible), :active, [data-preview]) {
 		--_leading: var(--md-sys-color-primary);
 	}
 	/* pressed state layer previews the next state */
-	.m3-chip[data-variant="filter"]:active {
+	.m3-chip[data-variant="filter"]:is(:active, [data-preview="pressed"]) {
 		--_layer: var(--md-sys-color-on-secondary-container);
 	}
 
@@ -263,10 +288,10 @@
 		--_outline: transparent;
 		--_elevation: var(--md-sys-elevation-level1);
 	}
-	.m3-chip[data-elevated]:hover:not(:disabled, [data-disabled]) {
+	.m3-chip[data-elevated]:is(:hover, [data-preview="hover"]):not(:disabled, [data-disabled]) {
 		--_elevation: var(--md-sys-elevation-level2);
 	}
-	.m3-chip[data-elevated]:is(:focus-visible, :active) {
+	.m3-chip[data-elevated]:is(:focus-visible, :active, [data-preview="focus"], [data-preview="pressed"]) {
 		--_elevation: var(--md-sys-elevation-level1);
 	}
 
@@ -280,10 +305,10 @@
 	.m3-chip[data-selected][data-variant="input"] {
 		--_leading: var(--md-sys-color-primary);
 	}
-	.m3-chip[data-selected]:not([data-elevated], :disabled, [data-disabled]):hover {
+	.m3-chip[data-selected]:not([data-elevated], :disabled, [data-disabled]):is(:hover, [data-preview="hover"]) {
 		--_elevation: var(--md-sys-elevation-level1);
 	}
-	.m3-chip[data-selected][data-variant="filter"]:active {
+	.m3-chip[data-selected][data-variant="filter"]:is(:active, [data-preview="pressed"]) {
 		--_layer: var(--md-sys-color-on-surface-variant);
 	}
 
@@ -294,7 +319,7 @@
 	.m3-chip[data-morph][data-selected] {
 		--_radius: var(--md-sys-shape-corner-large);
 	}
-	.m3-chip[data-morph]:active {
+	.m3-chip[data-morph]:is(:active, [data-preview="pressed"]) {
 		--_radius: var(--md-sys-shape-corner-small);
 	}
 

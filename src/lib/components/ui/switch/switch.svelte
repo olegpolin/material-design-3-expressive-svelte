@@ -96,7 +96,7 @@
 	.m3-switch[data-icons] {
 		--_size: 24px;
 	}
-	.m3-switch:is(:hover, :focus-visible, :active) {
+	.m3-switch:is(:hover, :focus-visible, :active, [data-preview]) {
 		--_handle: var(--md-sys-color-on-surface-variant);
 	}
 
@@ -109,10 +109,10 @@
 		--_icon: var(--md-sys-color-primary);
 		color: var(--md-sys-color-primary);
 	}
-	.m3-switch[data-state="checked"]:is(:hover, :focus-visible, :active) {
+	.m3-switch[data-state="checked"]:is(:hover, :focus-visible, :active, [data-preview]) {
 		--_handle: var(--md-sys-color-primary-container);
 	}
-	.m3-switch:active {
+	.m3-switch:is(:active, [data-preview="pressed"]) {
 		--_size: 28px;
 	}
 
@@ -178,7 +178,7 @@
 			background-color var(--_effects);
 	}
 	/* While pressed the handle snaps (Compose SnapSpec) */
-	.m3-switch:active .handle {
+	.m3-switch:is(:active, [data-preview="pressed"]) .handle {
 		transition: background-color var(--_effects);
 	}
 	.m3-switch:is(:disabled, [data-disabled]) .handle {

@@ -7,6 +7,38 @@
 	import { Chip, ChipSet } from "#lib/components/ui/chip/index.js";
 	import * as Field from "#lib/components/ui/field/index.js";
 	import * as Avatar from "#lib/components/ui/avatar/index.js";
+	import type { Attachment } from "svelte/attachments";
+
+	// ---------------------------------------------------------------- static state previews
+	// Each control in a "States" grid gets `data-preview="hover|focus|pressed"`: the components style
+	// that like the real pseudo-class, and this attachment lights the matching state layer on the
+	// control's ripple overlay (pressed = the flat 10% layer). The grids are `inert`.
+	type PreviewState = "hover" | "focus" | "pressed";
+	const STATES: { label: string; preview?: PreviewState; disabled?: boolean }[] = [
+		{ label: "Enabled" },
+		{ label: "Hover", preview: "hover" },
+		{ label: "Focus", preview: "focus" },
+		{ label: "Pressed", preview: "pressed" },
+		{ label: "Disabled", disabled: true },
+	];
+	const SLIDER_STATES = STATES.filter((st) => st.preview !== "hover");
+	const previewStates: Attachment<HTMLElement> = (node) => {
+		const apply = () => {
+			for (const el of node.querySelectorAll<HTMLElement>("[data-preview]")) {
+				const layer = el.querySelector<HTMLElement>(":scope > [data-m3-ripple]");
+				if (!layer) continue;
+				const state = el.dataset.preview;
+				layer.toggleAttribute("data-hovered", state === "hover");
+				layer.toggleAttribute("data-focused", state === "focus");
+				layer.toggleAttribute("data-pressed", state === "pressed");
+				layer.toggleAttribute("data-no-ripple", state === "pressed");
+			}
+		};
+		queueMicrotask(apply);
+		const observer = new MutationObserver(apply);
+		observer.observe(node, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	};
 
 	// ---------------------------------------------------------------- checkbox
 	let cbA = $state(false);
@@ -42,6 +74,9 @@
 	let sizeValues = $state<Record<SliderSize, number>>({ xs: 30, sm: 45, md: 60, lg: 72, xl: 85 });
 	let continuous = $state(42);
 	let discrete = $state(40);
+	let offset = $state(20);
+	let rtlValue = $state(30);
+	let rtlRange = $state([25, 60]);
 	let range = $state([20, 70]);
 	let rangeTicks = $state([2, 7]);
 	let balance = $state(15);
@@ -86,7 +121,18 @@
 </svelte:head>
 
 {#snippet value(text: string | number)}
-	<span class="type-label-md min-w-10 text-on-surface-variant tabular-nums">{text}</span>
+	<span dir="ltr" class="type-label-md min-w-10 text-on-surface-variant tabular-nums">{text}</span>
+{/snippet}
+
+{#snippet statesHeader(states: typeof STATES)}
+	<span></span>
+	{#each states as st (st.label)}
+		<span class="type-label-md text-center text-on-surface-variant">{st.label}</span>
+	{/each}
+{/snippet}
+
+{#snippet rowLabel(text: string)}
+	<span class="type-label-lg pe-2 text-on-surface">{text}</span>
 {/snippet}
 
 {#snippet initials(text: string)}
@@ -180,6 +226,31 @@
 				</Field.FieldGroup>
 			</Demo>
 		</div>
+
+		<Demo
+			label="States"
+			spec="Hover 8% · focus 10% + 3dp secondary ring · pressed 10% (the layer previews the next state) · disabled 38%"
+			class="block overflow-x-auto"
+		>
+			<div class="state-grid" inert {@attach previewStates}>
+				{@render statesHeader(STATES)}
+				{#each [["Unselected", false, false, false], ["Selected", true, false, false], ["Indeterminate", false, true, false], ["Error", false, false, true], ["Error, selected", true, false, true]] as const as [label, on, mixed, invalid] (label)}
+					{@render rowLabel(label)}
+					{#each STATES as st (st.label)}
+						<div class="grid place-items-center">
+							<Checkbox
+								checked={on}
+								indeterminate={mixed}
+								aria-invalid={invalid || undefined}
+								disabled={st.disabled}
+								data-preview={st.preview}
+								aria-label="{label}, {st.label}"
+							/>
+						</div>
+					{/each}
+				{/each}
+			</div>
+		</Demo>
 	</Section>
 
 	<!-- ================================================================ RADIO -->
@@ -191,7 +262,7 @@
 			<Demo label="Radio group" spec="Ring 20dp · stroke 2dp · dot 10dp · state layer 40dp · target 48dp">
 				<Field.FieldSet class="w-full">
 					<Field.FieldLegend variant="label" class="type-title-sm text-on-surface">Delivery</Field.FieldLegend>
-					<RadioGroup.Root bind:value={delivery} class="gap-0">
+					<RadioGroup.Root bind:value={delivery} aria-label="Delivery" class="gap-0">
 						{#each [["standard", "Standard · 3–5 days"], ["express", "Express · next day"], ["pickup", "Pick up in store"]] as [v, l] (v)}
 							<Field.Field orientation="horizontal" class="gap-1">
 								<RadioGroup.Item value={v} id="delivery-{v}" />
@@ -227,6 +298,24 @@
 				</div>
 			</Demo>
 		</div>
+
+		<Demo
+			label="States"
+			spec="Unselected on-surface-variant → on-surface on hover / focus / press · selected primary · disabled 38%"
+			class="block overflow-x-auto"
+		>
+			<div class="state-grid" inert {@attach previewStates}>
+				{@render statesHeader(STATES)}
+				{#each [["Unselected", ""], ["Selected", "x"]] as const as [label, v] (label)}
+					{@render rowLabel(label)}
+					{#each STATES as st (st.label)}
+						<RadioGroup.Root value={v} disabled={st.disabled} aria-label="{label}, {st.label}" class="grid place-items-center">
+							<RadioGroup.Item value="x" data-preview={st.preview} aria-label="{label}, {st.label}" />
+						</RadioGroup.Root>
+					{/each}
+				{/each}
+			</div>
+		</Demo>
 	</Section>
 
 	<!-- ================================================================ SWITCH -->
@@ -268,6 +357,30 @@
 				</Field.FieldGroup>
 			</Demo>
 		</div>
+
+		<Demo
+			label="States"
+			spec="Handle outline → on-surface-variant (off), on-primary → primary-container (on) · pressed handle 28dp"
+			class="block overflow-x-auto"
+		>
+			<div class="state-grid state-grid-wide" inert {@attach previewStates}>
+				{@render statesHeader(STATES)}
+				{#each [["Off", false, false], ["On", true, false], ["Off, icons", false, true], ["On, icons", true, true]] as const as [label, on, withIcons] (label)}
+					{@render rowLabel(label)}
+					{#each STATES as st (st.label)}
+						<div class="grid place-items-center">
+							<Switch
+								checked={on}
+								icons={withIcons}
+								disabled={st.disabled}
+								data-preview={st.preview}
+								aria-label="{label}, {st.label}"
+							/>
+						</div>
+					{/each}
+				{/each}
+			</div>
+		</Demo>
 	</Section>
 
 	<!-- ================================================================ SLIDER -->
@@ -329,7 +442,8 @@
 			</Demo>
 
 			<Demo label="Centered, discrete, size M" spec="step 10 · handle 52dp" class="pt-20">
-				<Slider value={20} min={-50} max={50} step={10} ticks centered size="md" valueIndicator aria-label="Offset" class="flex-1" />
+				<Slider bind:value={offset} min={-50} max={50} step={10} ticks centered size="md" valueIndicator aria-label="Offset" class="flex-1" />
+				{@render value(offset > 0 ? `+${offset}` : offset)}
 			</Demo>
 
 			<Demo label="Fractional step" spec="step 0.5 · custom format" class="pt-20">
@@ -352,10 +466,24 @@
 					<Slider value={[20, 60]} step={10} ticks disabled aria-label="Disabled range" />
 				</div>
 			</Demo>
+
+			<Demo label="Right-to-left" spec="dir=rtl inherited · starts on the right · arrows follow the reading direction" class="pt-20">
+				<div dir="rtl" class="flex w-full flex-col gap-16">
+					<div class="flex items-center gap-4">
+						<Slider bind:value={rtlValue} valueIndicator aria-label="RTL slider" class="flex-1" />
+						{@render value(rtlValue)}
+					</div>
+					<div class="flex items-center gap-4">
+						<Slider bind:value={rtlRange} step={5} ticks size="sm" valueIndicator aria-label="RTL range" class="flex-1" />
+						{@render value(`${rtlRange[0]}–${rtlRange[1]}`)}
+					</div>
+				</div>
+			</Demo>
+
 		</div>
 
-		<Demo label="Vertical" spec="orientation vertical · start at the bottom · value indicator beside the handle" class="justify-around ps-20">
-			<div class="flex items-end gap-10">
+		<Demo label="Vertical" spec="orientation vertical · start at the bottom · value indicator beside the handle" class="justify-around ps-16 sm:ps-20">
+			<div class="flex flex-wrap items-end gap-x-8 gap-y-6 sm:gap-10">
 				<div class="flex flex-col items-center gap-3">
 					<Slider bind:value={vertical[0]} orientation="vertical" valueIndicator aria-label="Vertical XS" />
 					{@render value(vertical[0])}
@@ -374,15 +502,29 @@
 				</div>
 			</div>
 		</Demo>
+
+		<Demo
+			label="States"
+			spec="No state layer: the handle narrows 4 → 2dp on focus / press · value indicator 12dp above"
+			class="block overflow-x-auto"
+		>
+			<div class="state-grid state-grid-slider" inert {@attach previewStates}>
+				{@render statesHeader(SLIDER_STATES)}
+				{@render rowLabel("Standard")}
+				{#each SLIDER_STATES as st (st.label)}
+					<Slider value={40} valueIndicator disabled={st.disabled} data-preview={st.preview} aria-label="Slider, {st.label}" />
+				{/each}
+			</div>
+		</Demo>
 	</Section>
 
 	<!-- ================================================================ CHIPS -->
 	<Section
 		title="Chips"
-		description="Assist, filter, input and suggestion chips. Flat chips have a 1dp outline; elevated chips sit on surface-container-low at level 1."
+		description="Assist, filter, input and suggestion chips. Flat chips have a 1dp outline; elevated chips sit on surface-container-low at level 1 (shown here on surface-container-lowest so they stay visible in dark mode)."
 	>
 		<div class="grid gap-6 md:grid-cols-2">
-			<Demo label="Assist" spec="32dp · corner 8dp · padding 16dp (8dp icon side) · icon 18dp primary">
+			<Demo class="bg-surface-container-lowest" label="Assist" spec="32dp · corner 8dp · padding 16dp (8dp icon side) · icon 18dp primary">
 				<ChipSet>
 					<Chip icon="event" onclick={() => (lastAction = "Add to calendar")}>Add to calendar</Chip>
 					<Chip icon="directions" elevated onclick={() => (lastAction = "Directions")}>Directions</Chip>
@@ -394,7 +536,7 @@
 				{@render value(`last: ${lastAction}`)}
 			</Demo>
 
-			<Demo label="Suggestion" spec="Label on-surface-variant · flat or elevated">
+			<Demo class="bg-surface-container-lowest" label="Suggestion" spec="Label on-surface-variant · flat or elevated">
 				<ChipSet>
 					<Chip variant="suggestion" onclick={() => (lastAction = "Sounds good")}>Sounds good</Chip>
 					<Chip variant="suggestion" onclick={() => (lastAction = "See you then")}>See you then</Chip>
@@ -403,7 +545,7 @@
 				</ChipSet>
 			</Demo>
 
-			<Demo
+			<Demo class="bg-surface-container-lowest"
 				label="Filter chip set"
 				spec="Selected: secondary-container, no outline · checkmark slot expands on fast-spatial"
 			>
@@ -418,7 +560,7 @@
 				{@render value(cuisinePicked.length ? cuisinePicked.join(", ") : "none")}
 			</Demo>
 
-			<Demo label="Filter states" spec="Unselected · selected · elevated · icon · trailing icon · disabled">
+			<Demo class="bg-surface-container-lowest" label="Filter states" spec="Unselected · selected · elevated · icon · trailing icon · disabled">
 				<ChipSet>
 					<Chip variant="filter" bind:selected={filterA}>Unselected</Chip>
 					<Chip variant="filter" bind:selected={filterB}>Selected</Chip>
@@ -431,7 +573,7 @@
 				</ChipSet>
 			</Demo>
 
-			<Demo label="Single-select filter" spec="One filter chip selected at a time">
+			<Demo class="bg-surface-container-lowest" label="Single-select filter" spec="One filter chip selected at a time">
 				<ChipSet aria-label="Sort by">
 					{#each sorts as s (s)}
 						<Chip variant="filter" bind:selected={() => sort === s, (v) => v && (sort = s)}>{s}</Chip>
@@ -440,7 +582,7 @@
 				{@render value(`sort: ${sort}`)}
 			</Demo>
 
-			<Demo label="Expressive shape morph" spec="morph: corner 12dp → full when selected → 8dp pressed (fast-spatial)">
+			<Demo class="bg-surface-container-lowest" label="Expressive shape morph" spec="morph: corner 12dp → full when selected → 8dp pressed (fast-spatial)">
 				<ChipSet>
 					<Chip variant="filter" morph bind:selected={morphA}>Press & hold</Chip>
 					<Chip variant="filter" morph bind:selected={morphB} icon="star">Favorites</Chip>
@@ -448,7 +590,7 @@
 				</ChipSet>
 			</Demo>
 
-			<Demo
+			<Demo class="bg-surface-container-lowest"
 				label="Input chips with avatar"
 				spec="Avatar 24dp · 4dp start, 8dp after avatar · remove 18dp (48dp target) · Backspace removes"
 			>
@@ -471,7 +613,7 @@
 				</ChipSet>
 			</Demo>
 
-			<Demo label="Input chips" spec="Leading icon on-surface-variant (primary on hover) · selected · disabled">
+			<Demo class="bg-surface-container-lowest" label="Input chips" spec="Leading icon on-surface-variant (primary on hover) · selected · disabled">
 				<ChipSet aria-label="Tags">
 					{#each tags as t (t)}
 						<Chip variant="input" icon="tag" removable onremove={() => (tags = tags.filter((x) => x !== t))}>{t}</Chip>
@@ -485,7 +627,7 @@
 				</ChipSet>
 			</Demo>
 
-			<Demo label="Scrolling chip set" spec="ChipSet scroll · gap 8dp · single line" class="block">
+			<Demo label="Scrolling chip set" spec="ChipSet scroll · gap 8dp · single line" class="bg-surface-container-lowest block">
 				<ChipSet scroll aria-label="Categories">
 					{#each ["All", "Music", "Podcasts", "Audiobooks", "Live", "Mixes", "Gaming", "News", "Sports", "Comedy"] as c (c)}
 						<Chip variant="filter" selected={c === "All"}>{c}</Chip>
@@ -493,5 +635,60 @@
 				</ChipSet>
 			</Demo>
 		</div>
+
+		<Demo
+			label="States"
+			spec="Hover 8% · focus 10% (flat outline → on-surface-variant) · pressed 10% · elevated L1 → L2 on hover · disabled 38% / 12%"
+			class="bg-surface-container-lowest block overflow-x-auto"
+		>
+			<div class="state-grid state-grid-chips" inert {@attach previewStates}>
+				{@render statesHeader(STATES)}
+				{#each [["Assist", "assist", false, false], ["Assist, elevated", "assist", true, false], ["Filter", "filter", false, false], ["Filter, selected", "filter", false, true], ["Filter, elevated", "filter", true, false], ["Input", "input", false, false]] as const as [label, variant, elevated, selected] (label)}
+					{@render rowLabel(label)}
+					{#each STATES as st (st.label)}
+						<div class="grid place-items-center">
+							<Chip
+								{variant}
+								{elevated}
+								{selected}
+								icon={variant === "filter" ? undefined : variant === "input" ? "tag" : "event"}
+								removable={variant === "input"}
+								disabled={st.disabled}
+								data-preview={st.preview}>{variant === "input" ? "Tag" : "Label"}</Chip
+							>
+						</div>
+					{/each}
+				{/each}
+			</div>
+		</Demo>
 	</Section>
 </Page>
+
+<style>
+	/* "States" grids: a label column + one column per state */
+	.state-grid {
+		display: grid;
+		grid-template-columns: auto repeat(5, minmax(56px, 1fr));
+		align-items: center;
+		gap: 12px 8px;
+		min-width: max-content;
+	}
+	.state-grid-wide {
+		grid-template-columns: auto repeat(5, minmax(72px, 1fr));
+	}
+	.state-grid-chips {
+		grid-template-columns: auto repeat(5, minmax(120px, 1fr));
+	}
+	.state-grid-slider {
+		grid-template-columns: auto repeat(4, minmax(160px, 1fr));
+		/* room for the 44dp value indicator 12dp above the focused / pressed handles */
+		row-gap: 64px;
+		column-gap: 32px;
+	}
+	/* Static focus ring (the live one is the global :focus-visible rule) */
+	.state-grid :global([data-preview="focus"]:not(.rail, .primary)),
+	.state-grid :global(.rail[data-preview="focus"] [role="slider"]) {
+		outline: 3px solid var(--md-sys-color-secondary);
+		outline-offset: 2px;
+	}
+</style>
