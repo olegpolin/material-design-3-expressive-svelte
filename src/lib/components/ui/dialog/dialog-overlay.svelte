@@ -2,6 +2,7 @@
 	import { Dialog as DialogPrimitive } from "bits-ui";
 	import { cn } from "#lib/utils.js";
 
+	// Scrim: `scrim` at 32% (navigation-containment.md §11); fades on default-effects / fast-effects.
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -12,6 +13,9 @@
 <DialogPrimitive.Overlay
 	bind:ref
 	data-slot="dialog-overlay"
-	class={cn("data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 isolate z-50", className)}
+	class={cn(
+		"fixed inset-0 isolate z-50 bg-scrim/32 [transition:opacity_var(--md-sys-motion-spring-default-effects-duration)_var(--md-sys-motion-spring-default-effects-easing)] data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:[transition:opacity_var(--md-sys-motion-spring-fast-effects-duration)_var(--md-sys-motion-spring-fast-effects-easing)]",
+		className
+	)}
 	{...restProps}
 />

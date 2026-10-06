@@ -2,6 +2,7 @@
 	import { cn, type WithElementRef } from "#lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
 
+	// Actions: end-aligned, 8dp gaps, 24dp below the supporting text (16dp gap + 8dp).
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -14,7 +15,7 @@
 	bind:this={ref}
 	data-slot="alert-dialog-footer"
 	class={cn(
-		"bg-muted/50 -mx-4 -mb-4 rounded-b-xl border-t p-4 flex flex-col-reverse gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+		"flex flex-wrap items-center justify-end gap-2 pt-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
 		className
 	)}
 	{...restProps}

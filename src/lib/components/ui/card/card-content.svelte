@@ -13,7 +13,7 @@
 <div
 	bind:this={ref}
 	data-slot="card-content"
-	class={cn("px-(--card-spacing)", className)}
+	class={cn("px-(--card-spacing) type-body-md text-on-surface-variant", className)}
 	{...restProps}
 >
 	{@render children?.()}

@@ -2,6 +2,7 @@
 	import { cn, type WithElementRef } from "#lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
 
+	// Hero icon slot: 24dp, `secondary`, centered; the header centers itself around it.
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -13,7 +14,10 @@
 <div
 	bind:this={ref}
 	data-slot="alert-dialog-media"
-	class={cn("bg-muted mb-2 inline-flex size-10 items-center justify-center rounded-md sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-6", className)}
+	class={cn(
+		"inline-flex size-6 items-center justify-center text-m3-secondary [&_[data-slot=icon]]:[--m3-icon-size:24px]! [&_svg]:size-6",
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}

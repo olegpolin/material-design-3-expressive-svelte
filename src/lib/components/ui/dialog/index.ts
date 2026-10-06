@@ -1,5 +1,6 @@
+import Body from "./dialog-body.svelte";
 import Close from "./dialog-close.svelte";
-import Content from "./dialog-content.svelte";
+import Content, { dialogContentVariants } from "./dialog-content.svelte";
 import Description from "./dialog-description.svelte";
 import Footer from "./dialog-footer.svelte";
 import Header from "./dialog-header.svelte";
@@ -20,6 +21,8 @@ export {
 	Content,
 	Description,
 	Close,
+	Body,
+	dialogContentVariants,
 	//
 	Root as Dialog,
 	Title as DialogTitle,
@@ -31,4 +34,5 @@ export {
 	Content as DialogContent,
 	Description as DialogDescription,
 	Close as DialogClose,
+	Body as DialogBody,
 };

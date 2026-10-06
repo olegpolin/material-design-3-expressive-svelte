@@ -2,6 +2,7 @@
 	import { AlertDialog as AlertDialogPrimitive } from "bits-ui";
 	import { cn } from "#lib/utils.js";
 
+	// headline-small (24/32), on-surface.
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -12,6 +13,6 @@
 <AlertDialogPrimitive.Title
 	bind:ref
 	data-slot="alert-dialog-title"
-	class={cn("text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2", className)}
+	class={cn("type-headline-sm text-on-surface", className)}
 	{...restProps}
 />

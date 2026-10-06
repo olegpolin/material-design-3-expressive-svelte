@@ -1,32 +1,31 @@
 <script lang="ts">
-	import { Dialog as DialogPrimitive } from "bits-ui";
-	import { Button } from "#lib/components/ui/button/index.js";
 	import { cn, type WithElementRef } from "#lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
+	import { getDialogLayout } from "./context.svelte.js";
 
+	/**
+	 * Actions row: end-aligned, 8dp between buttons on both axes; 24dp below the body
+	 * (16dp container gap + 8dp). Full-screen: a 56dp bottom action bar.
+	 */
 	let {
 		ref = $bindable(null),
 		class: className,
 		children,
-		showCloseButton = false,
 		...restProps
-	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
-		showCloseButton?: boolean;
-	} = $props();
+	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
+
+	const layout = getDialogLayout();
 </script>
 
 <div
 	bind:this={ref}
 	data-slot="dialog-footer"
-	class={cn("bg-muted/50 -mx-4 -mb-4 rounded-b-xl border-t p-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+	class={cn(
+		"flex shrink-0 flex-wrap items-center justify-end gap-2",
+		layout.fullscreen ? "h-14 border-t border-outline-variant px-6" : "pt-2",
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}
-	{#if showCloseButton}
-		<DialogPrimitive.Close>
-			{#snippet child({ props })}
-				<Button variant="outline" {...props}>Close</Button>
-			{/snippet}
-		</DialogPrimitive.Close>
-	{/if}
 </div>

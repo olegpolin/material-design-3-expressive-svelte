@@ -2,6 +2,7 @@
 	import { cn, type WithElementRef } from "#lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
 
+	// Title + supporting text 16dp apart; centered when an `AlertDialog.Media` hero icon is present.
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -13,7 +14,10 @@
 <div
 	bind:this={ref}
 	data-slot="alert-dialog-header"
-	class={cn("grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]", className)}
+	class={cn(
+		"flex flex-col gap-4 has-data-[slot=alert-dialog-media]:items-center has-data-[slot=alert-dialog-media]:text-center",
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}
