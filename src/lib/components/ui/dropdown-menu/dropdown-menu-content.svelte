@@ -2,6 +2,7 @@
 	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
 	import { cn, type WithoutChildrenOrChild } from "#lib/utils.js";
 	import DropdownMenuPortal from "./dropdown-menu-portal.svelte";
+	import { menuContentVariants, useMenuVariant } from "./context.js";
 	import type { ComponentProps } from "svelte";
 
 	let {
@@ -14,18 +15,55 @@
 	}: DropdownMenuPrimitive.ContentProps & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DropdownMenuPortal>>;
 	} = $props();
+
+	const menu = useMenuVariant();
 </script>
 
 <DropdownMenuPortal {...portalProps}>
 	<DropdownMenuPrimitive.Content
 		bind:ref
 		data-slot="dropdown-menu-content"
+		data-menu-surface=""
+		data-variant={menu.variant}
 		{sideOffset}
 		{align}
-		class={cn(
-			"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 bg-popover text-popover-foreground min-w-32 rounded-lg p-1 shadow-md ring-1 duration-100 z-50 max-h-(--bits-dropdown-menu-content-available-height) w-(--bits-dropdown-menu-anchor-width) origin-(--bits-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto data-closed:overflow-hidden",
-			className
-		)}
+		class={cn(menuContentVariants({ variant: menu.variant }), className)}
 		{...restProps}
 	/>
 </DropdownMenuPortal>
+
+<style>
+	/* M3 menu open: scale 0.8 → 1 on FastSpatial + fade on FastEffects, from the anchor (inputs-selection.md §8.1).
+	   Global because the surface element is rendered by bits-ui; also used by sub-menus and the select listbox. */
+	:global(.m3-menu-surface[data-state="open"]) {
+		animation:
+			m3-menu-scale-in var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing),
+			m3-menu-fade-in var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing);
+	}
+	:global(.m3-menu-surface[data-state="closed"]) {
+		animation:
+			m3-menu-scale-out var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing),
+			m3-menu-fade-out var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing)
+			forwards;
+	}
+	@keyframes -global-m3-menu-scale-in {
+		from {
+			scale: 0.8;
+		}
+	}
+	@keyframes -global-m3-menu-fade-in {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes -global-m3-menu-scale-out {
+		to {
+			scale: 0.8;
+		}
+	}
+	@keyframes -global-m3-menu-fade-out {
+		to {
+			opacity: 0;
+		}
+	}
+</style>

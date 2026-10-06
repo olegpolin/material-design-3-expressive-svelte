@@ -7,6 +7,7 @@
 	import SelectScrollUpButton from "./select-scroll-up-button.svelte";
 	import type { ComponentProps } from "svelte";
 
+	/** M3 baseline menu surface: surface-container, 4dp corner, level 2, 8dp vertical list padding. */
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -26,20 +27,55 @@
 		{sideOffset}
 		{preventScroll}
 		data-slot="select-content"
+		data-menu-surface=""
 		class={cn(
-			"bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 min-w-36 rounded-lg shadow-md ring-1 duration-100 relative z-50 max-h-(--bits-select-content-available-height) origin-(--bits-select-content-transform-origin) overflow-x-hidden overflow-y-auto",
+			"m3-menu-surface relative z-50 max-h-(--bits-select-content-available-height) min-w-28 origin-(--bits-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-m3-xs bg-surface-container py-2 text-on-surface shadow-m3-2 outline-none",
 			className
 		)}
 		{...restProps}
 	>
 		<SelectScrollUpButton />
 		<SelectPrimitive.Viewport
-			class={cn(
-				"h-(--bits-select-anchor-height) w-full min-w-(--bits-select-anchor-width) scroll-my-1"
-			)}
+			class="h-(--bits-select-anchor-height) w-full min-w-(--bits-select-anchor-width) scroll-my-2"
 		>
 			{@render children?.()}
 		</SelectPrimitive.Viewport>
 		<SelectScrollDownButton />
 	</SelectPrimitive.Content>
 </SelectPortal>
+
+<style>
+	/* Same open/close motion as the M3 menu (dropdown-menu-content.svelte): scale 0.8 → 1 FastSpatial + fade FastEffects.
+	   Duplicated on purpose so a page that only uses Select still gets it. */
+	:global(.m3-menu-surface[data-state="open"]) {
+		animation:
+			m3-menu-scale-in var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing),
+			m3-menu-fade-in var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing);
+	}
+	:global(.m3-menu-surface[data-state="closed"]) {
+		animation:
+			m3-menu-scale-out var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing),
+			m3-menu-fade-out var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects-easing)
+			forwards;
+	}
+	@keyframes -global-m3-menu-scale-in {
+		from {
+			scale: 0.8;
+		}
+	}
+	@keyframes -global-m3-menu-fade-in {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes -global-m3-menu-scale-out {
+		to {
+			scale: 0.8;
+		}
+	}
+	@keyframes -global-m3-menu-fade-out {
+		to {
+			opacity: 0;
+		}
+	}
+</style>

@@ -52,3 +52,13 @@ export {
 	SubTrigger,
 	Trigger,
 };
+
+export type { MenuVariant } from "./context.js";
+export {
+	menuContentVariants,
+	menuGroupVariants,
+	menuItemVariants,
+	menuLabelVariants,
+	menuSeparatorVariants,
+	menuShortcutVariants,
+} from "./context.js";

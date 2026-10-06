@@ -1,20 +1,23 @@
 <script lang="ts">
 	import { cn, type WithElementRef } from "#lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
+	import { menuShortcutVariants, useMenuVariant } from "./context.js";
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		children,
 		...restProps
-	}: WithElementRef<HTMLAttributes<HTMLSpanElement>> = $props();
+	}: WithElementRef<HTMLAttributes<HTMLElement>> = $props();
+
+	const menu = useMenuVariant();
 </script>
 
-<span
+<kbd
 	bind:this={ref}
 	data-slot="dropdown-menu-shortcut"
-	class={cn("text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground ml-auto text-xs tracking-widest", className)}
+	class={cn(menuShortcutVariants({ variant: menu.variant }), className)}
 	{...restProps}
 >
 	{@render children?.()}
-</span>
+</kbd>

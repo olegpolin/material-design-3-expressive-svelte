@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from "bits-ui";
 	import { cn } from "#lib/utils.js";
+	import { menuLabelVariants } from "#lib/components/ui/dropdown-menu/context.js";
 	import type { ComponentProps } from "svelte";
 
 	let {
@@ -14,7 +15,7 @@
 <SelectPrimitive.GroupHeading
 	bind:ref
 	data-slot="select-group-heading"
-	class={cn("text-muted-foreground px-1.5 py-1 text-xs", className)}
+	class={cn(menuLabelVariants({ variant: "baseline" }), className)}
 	{...restProps}
 >
 	{@render children?.()}

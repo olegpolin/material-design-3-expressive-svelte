@@ -2,30 +2,36 @@
 	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
 	import { cn, type WithoutChildrenOrChild } from "#lib/utils.js";
 	import DropdownMenuPortal from "./dropdown-menu-portal.svelte";
+	import { menuContentVariants, useMenuVariant } from "./context.js";
 	import type { ComponentProps } from "svelte";
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		align = "start",
-		alignOffset = -3,
+		alignOffset,
+		sideOffset,
 		portalProps,
 		...restProps
 	}: DropdownMenuPrimitive.SubContentProps & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DropdownMenuPortal>>;
 	} = $props();
+
+	const menu = useMenuVariant();
+	// Align the first submenu item with its trigger: baseline lists have 8dp top padding, expressive 4dp.
+	const offset = $derived(alignOffset ?? (menu.variant === "baseline" ? -8 : -4));
 </script>
 
 <DropdownMenuPortal {...portalProps}>
 	<DropdownMenuPrimitive.SubContent
 		bind:ref
 		data-slot="dropdown-menu-sub-content"
+		data-menu-surface=""
+		data-variant={menu.variant}
 		{align}
-		{alignOffset}
-		class={cn(
-			"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 bg-popover text-popover-foreground min-w-[96px] rounded-lg p-1 shadow-lg ring-1 duration-100 z-50 origin-(--bits-dropdown-menu-content-transform-origin) overflow-hidden",
-			className
-		)}
+		alignOffset={offset}
+		sideOffset={sideOffset ?? (menu.variant === "baseline" ? 0 : 4)}
+		class={cn(menuContentVariants({ variant: menu.variant }), className)}
 		{...restProps}
 	/>
 </DropdownMenuPortal>

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { cn } from "#lib/utils.js";
+	import { Icon } from "#lib/components/ui/icon/index.js";
+	import { ripple } from "#lib/m3/ripple.svelte.js";
+	import { menuItemVariants, useMenuVariant } from "./context.js";
 
 	let {
 		ref = $bindable(null),
@@ -12,18 +14,18 @@
 	}: DropdownMenuPrimitive.SubTriggerProps & {
 		inset?: boolean;
 	} = $props();
+
+	const menu = useMenuVariant();
 </script>
 
 <DropdownMenuPrimitive.SubTrigger
 	bind:ref
 	data-slot="dropdown-menu-sub-trigger"
 	data-inset={inset}
-	class={cn(
-		"focus:bg-accent focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-hidden select-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
-		className
-	)}
+	class={cn(menuItemVariants({ variant: menu.variant }), className)}
 	{...restProps}
+	{@attach ripple()}
 >
 	{@render children?.()}
-	<ChevronRightIcon class="cn-rtl-flip ml-auto" />
+	<Icon name="arrow_right" class="ms-auto rtl:-scale-x-100" />
 </DropdownMenuPrimitive.SubTrigger>

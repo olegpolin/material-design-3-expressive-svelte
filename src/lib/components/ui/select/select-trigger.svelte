@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from "bits-ui";
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { cn, type WithoutChild } from "#lib/utils.js";
+	import { Icon } from "#lib/components/ui/icon/index.js";
 
+	/**
+	 * M3 outlined text-field look (inputs-selection.md §5.1/§5.4): 56dp, 4dp corner, 1dp `outline`
+	 * → `on-surface` hover → 2dp `primary` focused/open, `error` when aria-invalid, 24dp trailing arrow.
+	 * `size="sm"` is a dense 40dp variant (not an M3 spec size) kept for shadcn compatibility.
+	 */
 	let {
 		ref = $bindable(null),
 		class: className,
@@ -19,11 +24,24 @@
 	data-slot="select-trigger"
 	data-size={size}
 	class={cn(
-		"border-input data-placeholder:text-muted-foreground dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 gap-1.5 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-sm transition-colors select-none focus-visible:ring-3 aria-invalid:ring-3 data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:flex *:data-[slot=select-value]:gap-1.5 [&_svg:not([class*='size-'])]:size-4 flex w-fit items-center justify-between whitespace-nowrap outline-none disabled:cursor-not-allowed disabled:opacity-50 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center [&_svg]:pointer-events-none [&_svg]:shrink-0",
+		"group/select-trigger type-body-lg relative flex w-fit min-w-0 cursor-pointer items-center justify-between gap-4 rounded-m3-xs border border-outline bg-transparent ps-4 pe-3 text-start whitespace-nowrap text-on-surface outline-none select-none",
+		"data-[size=default]:h-14 data-[size=sm]:h-10",
+		"transition-[border-color,box-shadow] duration-spring-fast-effects ease-spring-fast-effects",
+		"hover:border-on-surface",
+		"focus-visible:border-m3-primary focus-visible:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]",
+		"data-open:border-m3-primary data-open:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]",
+		"data-placeholder:text-on-surface-variant",
+		"aria-invalid:border-error aria-invalid:hover:border-on-error-container aria-invalid:focus-visible:border-error aria-invalid:focus-visible:shadow-[inset_0_0_0_1px_var(--md-sys-color-error)] aria-invalid:data-open:border-error aria-invalid:data-open:shadow-[inset_0_0_0_1px_var(--md-sys-color-error)]",
+		"disabled:pointer-events-none disabled:cursor-default disabled:border-on-surface/12 disabled:text-on-surface/38",
+		"*:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-3 *:data-[slot=select-value]:truncate",
+		"[&_[data-slot=icon]]:pointer-events-none",
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
-	<ChevronDownIcon class="text-muted-foreground size-4 pointer-events-none" />
+	<Icon
+		name="arrow_drop_down"
+		class="text-on-surface-variant transition-transform duration-spring-fast-spatial ease-spring-fast-spatial group-disabled/select-trigger:text-on-surface/38 group-aria-invalid/select-trigger:text-error group-data-open/select-trigger:rotate-180"
+	/>
 </SelectPrimitive.Trigger>

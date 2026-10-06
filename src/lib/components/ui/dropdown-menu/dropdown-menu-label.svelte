@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn, type WithElementRef } from "#lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
+	import { menuLabelVariants, useMenuVariant } from "./context.js";
 
 	let {
 		ref = $bindable(null),
@@ -11,13 +12,15 @@
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		inset?: boolean;
 	} = $props();
+
+	const menu = useMenuVariant();
 </script>
 
 <div
 	bind:this={ref}
 	data-slot="dropdown-menu-label"
 	data-inset={inset}
-	class={cn("text-muted-foreground px-1.5 py-1 text-xs font-medium data-inset:pl-7", className)}
+	class={cn(menuLabelVariants({ variant: menu.variant }), className)}
 	{...restProps}
 >
 	{@render children?.()}

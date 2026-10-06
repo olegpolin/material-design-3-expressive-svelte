@@ -9,9 +9,4 @@
 	}: SelectPrimitive.GroupProps = $props();
 </script>
 
-<SelectPrimitive.Group
-	bind:ref
-	data-slot="select-group"
-	class={cn("scroll-my-1 p-1", className)}
-	{...restProps}
-/>
+<SelectPrimitive.Group bind:ref data-slot="select-group" class={cn("scroll-my-2", className)} {...restProps} />

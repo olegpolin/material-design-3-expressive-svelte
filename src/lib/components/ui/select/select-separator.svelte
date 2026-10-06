@@ -10,9 +10,10 @@
 	}: SeparatorPrimitive.RootProps = $props();
 </script>
 
+<!-- M3 menu divider: 1dp outline-variant, 8dp vertical padding. -->
 <Separator
 	bind:ref
 	data-slot="select-separator"
-	class={cn("bg-border -mx-1 my-1 h-px pointer-events-none", className)}
+	class={cn("pointer-events-none my-2 h-px bg-outline-variant", className)}
 	{...restProps}
 />
