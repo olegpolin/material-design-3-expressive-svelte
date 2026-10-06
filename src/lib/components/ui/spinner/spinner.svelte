@@ -1,20 +1,27 @@
 <script lang="ts">
-	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+	import type { ComponentProps } from "svelte";
 	import { cn } from "#lib/utils.js";
-	import type { SVGAttributes } from "svelte/elements";
+	import { LoadingIndicator } from "#lib/components/ui/loading-indicator/index.js";
 
+	/**
+	 * shadcn-compatible `Spinner`, rendered as the M3 Expressive loading indicator (shape morph).
+	 * Defaults to `size-4` in `currentColor` so it drops into buttons like the old lucide spinner;
+	 * pass `class="size-12"` (48dp) for the spec size.
+	 */
 	let {
 		class: className,
 		role = "status",
-		// we add name, color, and stroke for compatibility with different icon libraries props.
-		// only forward them when set, otherwise `stroke: undefined` overrides the icon's `currentColor`
-		name,
-		color,
-		stroke,
-		className: legacyClassName,
+		color = "currentColor",
 		"aria-label": ariaLabel = "Loading",
 		...restProps
-	}: SVGAttributes<SVGSVGElement> = $props();
+	}: ComponentProps<typeof LoadingIndicator> = $props();
 </script>
 
-<Loader2Icon {role} {...name != null ? { name } : {}} {...color != null ? { color } : {}} {...stroke != null ? { stroke } : {}} {...legacyClassName != null ? { className: legacyClassName } : {}} aria-label={ariaLabel} class={cn("size-4 animate-spin", className)} {...restProps} />
+<LoadingIndicator
+	data-slot="spinner"
+	{role}
+	{color}
+	aria-label={ariaLabel}
+	class={cn("size-4", className)}
+	{...restProps}
+/>

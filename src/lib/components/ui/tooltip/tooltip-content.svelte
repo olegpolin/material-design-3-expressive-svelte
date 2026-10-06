@@ -1,48 +1,86 @@
+<script lang="ts" module>
+	import { tv, type VariantProps } from "tailwind-variants";
+
+	/** navigation-containment.md §15. Arrow-less (the 16 × 8dp caret is optional in M3). */
+	export const tooltipVariants = tv({
+		base: [
+			"z-50 w-fit origin-(--bits-tooltip-content-transform-origin)",
+			// Enter/exit: scale 0.8 → 1 (fast-spatial) + opacity 0 → 1 (fast-effects).
+			"scale-100 opacity-100 starting:scale-80 starting:opacity-0",
+			"data-[state=closed]:scale-80 data-[state=closed]:opacity-0",
+		],
+		variants: {
+			variant: {
+				// Plain: 24dp min height, 40–200dp wide, 8dp × 4dp padding, 4dp corner, inverse-surface, body-small.
+				plain:
+					"type-body-sm flex min-h-6 min-w-10 max-w-[200px] items-center rounded-m3-xs bg-inverse-surface px-2 py-1 text-inverse-on-surface",
+				// Rich: ≤ 320dp, 12dp corner, surface-container, level 2, 12dp top / 16dp sides padding.
+				rich: "flex max-w-80 flex-col rounded-m3-md bg-surface-container px-4 pt-3 pb-3 text-on-surface-variant shadow-m3-2 has-data-[slot=tooltip-actions]:pb-2",
+			},
+		},
+		defaultVariants: { variant: "plain" },
+	});
+
+	export type TooltipVariant = VariantProps<typeof tooltipVariants>["variant"];
+</script>
+
 <script lang="ts">
 	import { Tooltip as TooltipPrimitive } from "bits-ui";
-	import { cn } from "#lib/utils.js";
-	import type { WithoutChildrenOrChild } from "#lib/utils.js";
+	import type { ComponentProps, Snippet } from "svelte";
+	import { cn, type WithoutChildrenOrChild } from "#lib/utils.js";
+	import { springTransition } from "#lib/m3/motion.js";
 	import TooltipPortal from "./tooltip-portal.svelte";
-	import type { ComponentProps } from "svelte";
 
 	let {
 		ref = $bindable(null),
 		class: className,
-		sideOffset = 0,
+		style,
+		variant = "plain",
+		subhead,
+		actions,
+		sideOffset = 4,
 		side = "top",
 		children,
-		arrowClasses,
 		portalProps,
 		...restProps
 	}: TooltipPrimitive.ContentProps & {
-		arrowClasses?: string;
+		/** `plain` (default) or `rich` (subhead, supporting text, actions; stays open while hovered). */
+		variant?: TooltipVariant;
+		/** Rich only: title-small subhead. */
+		subhead?: string;
+		/** Rich only: up to two `Tooltip.Action` text buttons. */
+		actions?: Snippet;
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof TooltipPortal>>;
 	} = $props();
+
+	const transition = `${springTransition("fast-spatial", "scale")}, ${springTransition("fast-effects", "opacity")}`;
 </script>
 
 <TooltipPortal {...portalProps}>
 	<TooltipPrimitive.Content
 		bind:ref
 		data-slot="tooltip-content"
+		data-variant={variant}
 		{sideOffset}
 		{side}
-		class={cn(
-			"data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs has-data-[slot=kbd]:pr-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm z-50 w-fit max-w-xs origin-(--bits-tooltip-content-transform-origin) bg-foreground text-background",
-			className
-		)}
+		class={cn(tooltipVariants({ variant }), className)}
+		style="transition: {transition}; {style ?? ''}"
 		{...restProps}
 	>
-		{@render children?.()}
-		<TooltipPrimitive.Arrow>
-			{#snippet child({ props })}
-				<div
-					class={cn(
-						"size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] z-50 bg-foreground fill-foreground data-[side=bottom]:-translate-x-1/2 data-[side=bottom]:-translate-y-[calc(-50%_+_1px)] data-[side=left]:-translate-y-[calc(50%_-_3px)] data-[side=right]:translate-x-[calc(50%_+_2px)] data-[side=right]:translate-y-1/2 data-[side=top]:translate-x-1/2 data-[side=top]:translate-y-[calc(-50%_+_2px)]",
-						arrowClasses
-					)}
-					{...props}
-				></div>
-			{/snippet}
-		</TooltipPrimitive.Arrow>
+		{#if variant === "rich"}
+			{#if subhead}
+				<p data-slot="tooltip-subhead" class="type-title-sm mb-1 text-on-surface-variant">{subhead}</p>
+			{/if}
+			<div data-slot="tooltip-text" class="type-body-md text-on-surface-variant">
+				{@render children?.()}
+			</div>
+			{#if actions}
+				<div data-slot="tooltip-actions" class="-ms-3 mt-2 flex flex-wrap gap-2">
+					{@render actions()}
+				</div>
+			{/if}
+		{:else}
+			{@render children?.()}
+		{/if}
 	</TooltipPrimitive.Content>
 </TooltipPortal>
