@@ -5,6 +5,9 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	// @material/material-color-utilities@0.4.0 has an extensionless ESM import that plain Node can't
+	// resolve (docs/research/color.md §6.1). Bundle it for SSR so any server-side import is safe.
+	ssr: { noExternal: ['@material/material-color-utilities'] },
 	plugins: [
 		tailwindcss(),
 		enhancedImages(),
