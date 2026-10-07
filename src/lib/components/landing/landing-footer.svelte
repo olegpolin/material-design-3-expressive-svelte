@@ -11,7 +11,7 @@
 	];
 	const EXTERNAL = [
 		{ href: 'https://m3.material.io', label: 'm3.material.io' },
-		{ href: 'https://github.com/olegpolin/material-design-3-expressive-svelte', label: 'Source on GitHub' },
+		{ href: 'https://github.com/olegpolin/material-expressive-svelte', label: 'Source on GitHub' },
 	];
 
 	const link =

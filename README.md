@@ -1,8 +1,8 @@
-# material-design-3-expressive-svelte
+# material-expressive-svelte
 
-A SvelteKit web app
+Material 3 Expressive, in Svelte. A showcase and reference implementation: start from shadcn-svelte and copy what you need from here.
 
-A showcase of **Material Design 3 Expressive** built on shadcn-svelte: a landing page, a components catalog (actions, selection, inputs, navigation, containment, communication, styles), a desktop dashboard and a phone-framed mobile app. Every component follows the published M3 Expressive token values (sizes, corners, colors, type, springs); the research behind them is in `docs/research/` and the token cheat-sheet in `docs/foundation.md`.
+Built on shadcn-svelte, it has a landing page, a components catalog (actions, selection, inputs, navigation, containment, communication, styles), a desktop dashboard and a phone-framed mobile app. Every component follows the published M3 Expressive token values (sizes, corners, colors, type, springs); the research behind them is in `docs/research/` and the token cheat-sheet in `docs/foundation.md`.
 
 ## Tech Stack
 
