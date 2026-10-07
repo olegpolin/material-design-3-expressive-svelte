@@ -1,5 +1,7 @@
 # Material Design 3 Expressive showcase — architecture plan
 
+> Historical: this was the build contract the component and page agents followed. The code and `docs/foundation.md` are the source of truth where they differ. Kept because it explains the intended structure and the rules behind it.
+
 This document is the contract every build agent follows. Read it fully before touching code.
 Research with exact spec values lives in `docs/research/*.md` — **always use those numbers**, never guess.
 
@@ -56,20 +58,21 @@ src/lib/components/ui/
   carousel/            # optional
   avatar/ skeleton/ table/ scroll-area/ (restyle lightly)
 src/routes/
-  +layout.svelte       # fonts, ModeWatcher, ThemeState provider, app shell (nav rail desktop / nav bar mobile)
-  +page.svelte         # landing page
-  components/+page.svelte            # components index
-  components/actions/+page.svelte    # buttons, icon buttons, FAB, FAB menu, button groups, split, segmented
-  components/selection/+page.svelte  # checkbox, radio, switch, slider, chips
-  components/inputs/+page.svelte     # text fields, search, menus, date/time (if any)
-  components/navigation/+page.svelte # nav bar, rail, drawer, app bars, toolbars, tabs
-  components/containment/+page.svelte# cards, dialogs, sheets, lists, divider, carousel
-  components/communication/+page.svelte # badges, progress, loading indicator, snackbar, tooltips
-  components/styles/+page.svelte     # color roles, typography scale, shape library, motion springs demo
-  dashboard/+page.svelte             # desktop dashboard
-  mobile/+layout.svelte              # phone frame on desktop, full-bleed on real phones
-  mobile/+page.svelte                # mobile app home (tall nav bar, top app bar, FAB menu, lists, chips)
-  mobile/(other screens)             # detail, settings, compose, etc.
+  +layout.svelte               # fonts, ModeWatcher, ThemeState provider
+  (app)/+layout.svelte         # site shell: nav rail on desktop, nav bar on mobile, theme panel
+  (app)/+page.svelte           # landing page
+  (app)/components/+page.svelte            # components index
+  (app)/components/actions/+page.svelte    # buttons, icon buttons, FAB, FAB menu, button groups, split, segmented
+  (app)/components/selection/+page.svelte  # checkbox, radio, switch, slider, chips
+  (app)/components/inputs/+page.svelte     # text fields, search, menus, select, date picker
+  (app)/components/navigation/+page.svelte # nav bar, rail, drawer, app bars, toolbars, tabs
+  (app)/components/containment/+page.svelte# cards, dialogs, sheets, lists, divider, carousel
+  (app)/components/communication/+page.svelte # badges, progress, loading indicator, snackbar, tooltips
+  (app)/components/styles/+page.svelte     # color roles, typography scale, shape library, motion springs demo
+  (app)/dashboard/+page.svelte             # desktop dashboard
+  mobile/+layout.svelte        # phone frame on desktop, full-bleed on real phones (outside the shell)
+  mobile/+page.svelte          # mobile app home
+  mobile/{library,compose,settings}/+page.svelte
 ```
 
 ## Theme / tokens in `layout.css`

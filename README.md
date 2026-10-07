@@ -23,6 +23,17 @@ npm i
 npm run dev
 ```
 
+## Using it as a reference
+
+This repo is meant to be read, not installed. If you want this look in another project, start from a normal shadcn-svelte setup, then point your AI agent (or yourself) at this repo and borrow what fits:
+
+- `docs/research/` for the spec numbers, with sources, so nothing has to be guessed
+- `docs/foundation.md` for how the tokens and helpers are organised
+- `src/routes/layout.css` and `src/lib/m3/` for the portable parts: tokens, motion, shapes, theming
+- `src/lib/components/ui/` for how each component applies the spec
+
+Adapt rather than copy wholesale. The setup here is more than most projects need, and the pieces are written so they can be taken individually.
+
 ## Where things live
 
 - `src/routes/layout.css` — all M3 tokens (color roles, type scale, shape, motion springs, elevation) as CSS variables and Tailwind utilities
@@ -30,4 +41,4 @@ npm run dev
 - `src/lib/components/ui/` — the component source (shadcn-svelte layout, restyled and extended to M3 Expressive)
 - `src/routes/(app)/` — site shell, landing, components catalog, dashboard
 - `src/routes/mobile/` — the phone-framed mobile app showcase
-- `docs/` — plan, foundation cheat-sheet and spec research
+- `docs/` — spec research, the foundation cheat-sheet and the original build plan (see `docs/README.md`)
