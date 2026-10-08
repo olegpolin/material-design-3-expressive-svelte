@@ -25,6 +25,14 @@ This project implements the M3 Expressive spec on top of shadcn-svelte. `docs/RE
 - `cn()` in `src/lib/utils.ts` is configured so M3 utilities (`rounded-m3-*`, `shadow-m3-*`, `text-<type>-*`, `duration-m3-*`, `ease-spring-*`) take part in class merging.
 - Run `npx @sveltejs/mcp svelte-autofixer <file>` on edited Svelte files and `npm run check` before finishing.
 
+## Cursor Cloud specific instructions
+
+- `@sveltejs/kit` requires Node `>=22.17`, and `.npmrc` sets `engine-strict=true`. Install provisions Node 22.22.2 under `/usr/local/lib/nodejs` and symlinks `node`, `npm`, and `npx` into `~/.local/bin` so login shells pick them up ahead of an older `/exec-daemon/node`. If `node -v` is below 22.17, prepend `/usr/local/lib/nodejs/bin` to `PATH`.
+- Install dependencies with `npm ci --legacy-peer-deps`. The lockfile omits a nested optional peer (`runed` wants `@sveltejs/kit@^2.21.0`) because the app depends on Kit 3; plain `npm ci` treats that as out of sync.
+- Dev server: `npm run dev -- --host 0.0.0.0 --port 5173` (http://localhost:5173). Landing page, `/dashboard`, `/components`, and `/mobile` are the main surfaces.
+- `npm run check` and `npm run build` are the project checks. There is no automated test suite.
+- No secrets or external services are required. `npm run build` may warn that `adapter-auto` could not detect a production host; the build still finishes.
+
 ## Reading this repo from another project
 
 If you are an agent working somewhere else and were pointed here for reference: treat this as a worked example, not a dependency. Take the spec values from `docs/research/`, the token and helper layout from `docs/foundation.md`, and the component patterns from `src/lib/components/ui/`, then adapt them to the target project's stack and conventions. Only bring over what that project actually needs.
